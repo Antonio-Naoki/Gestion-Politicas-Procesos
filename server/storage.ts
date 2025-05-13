@@ -23,8 +23,12 @@ import {
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { db, pool } from "./db";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
 const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 // Interface for storage methods
 export interface IStorage {
@@ -76,9 +80,10 @@ export interface IStorage {
   createDocumentVersion(version: InsertDocumentVersion): Promise<DocumentVersion>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 }
 
+// In-memory storage implementation
 export class MemStorage implements IStorage {
   private usersMap: Map<number, User>;
   private documentsMap: Map<number, Document>;
@@ -87,7 +92,7 @@ export class MemStorage implements IStorage {
   private policyAcceptancesMap: Map<number, PolicyAcceptance>;
   private activitiesMap: Map<number, Activity>;
   private documentVersionsMap: Map<number, DocumentVersion>;
-  sessionStore: session.SessionStore;
+  sessionStore: any;
   
   private userIdCounter: number;
   private documentIdCounter: number;
@@ -416,4 +421,288 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
+  sessionStore: any;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true
+    });
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUsersByRole(roles: string[]): Promise<User[]> {
+    if (roles.length === 1) {
+      return await db
+        .select()
+        .from(users)
+        .where(eq(users.role, roles[0] as any));
+    } else {
+      return await db
+        .select()
+        .from(users)
+        .where(inArray(users.role, roles as any[]));
+    }
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser as any)
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: number, userUpdate: Partial<User>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(userUpdate as any)
+      .where(eq(users.id, id))
+      .returning();
+    
+    if (!updatedUser) {
+      throw new Error("User not found");
+    }
+    
+    return updatedUser;
+  }
+
+  // Document methods
+  async getDocument(id: number): Promise<Document | undefined> {
+    const [document] = await db.select().from(documents).where(eq(documents.id, id));
+    return document;
+  }
+
+  async getAllDocuments(): Promise<Document[]> {
+    return await db.select().from(documents);
+  }
+
+  async getDocumentsByUser(userId: number): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(eq(documents.createdBy, userId));
+  }
+
+  async createDocument(insertDocument: InsertDocument): Promise<Document> {
+    const [document] = await db
+      .insert(documents)
+      .values(insertDocument as any)
+      .returning();
+    return document;
+  }
+
+  async updateDocument(id: number, documentUpdate: Partial<Document>): Promise<Document> {
+    // Always update the updatedAt timestamp
+    const [updatedDocument] = await db
+      .update(documents)
+      .set({
+        ...documentUpdate as any,
+        updatedAt: new Date()
+      })
+      .where(eq(documents.id, id))
+      .returning();
+    
+    if (!updatedDocument) {
+      throw new Error("Document not found");
+    }
+    
+    return updatedDocument;
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    await db
+      .delete(documents)
+      .where(eq(documents.id, id));
+  }
+
+  // Approval methods
+  async getApproval(id: number): Promise<Approval | undefined> {
+    const [approval] = await db.select().from(approvals).where(eq(approvals.id, id));
+    return approval;
+  }
+
+  async getAllApprovals(): Promise<Approval[]> {
+    return await db.select().from(approvals);
+  }
+
+  async getApprovalsByUser(userId: number): Promise<Approval[]> {
+    return await db
+      .select()
+      .from(approvals)
+      .where(eq(approvals.userId, userId));
+  }
+
+  async getApprovalsByDocumentId(documentId: number): Promise<Approval[]> {
+    return await db
+      .select()
+      .from(approvals)
+      .where(eq(approvals.documentId, documentId));
+  }
+
+  async createApproval(insertApproval: InsertApproval): Promise<Approval> {
+    const [approval] = await db
+      .insert(approvals)
+      .values(insertApproval as any)
+      .returning();
+    return approval;
+  }
+
+  async updateApproval(id: number, approvalUpdate: Partial<Approval>): Promise<Approval> {
+    const [updatedApproval] = await db
+      .update(approvals)
+      .set(approvalUpdate as any)
+      .where(eq(approvals.id, id))
+      .returning();
+    
+    if (!updatedApproval) {
+      throw new Error("Approval not found");
+    }
+    
+    return updatedApproval;
+  }
+
+  // Task methods
+  async getTask(id: number): Promise<Task | undefined> {
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+    return task;
+  }
+
+  async getAllTasks(): Promise<Task[]> {
+    return await db.select().from(tasks);
+  }
+
+  async getTasksByAssignee(userId: number): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.assignedTo, userId));
+  }
+
+  async createTask(insertTask: InsertTask): Promise<Task> {
+    const [task] = await db
+      .insert(tasks)
+      .values(insertTask as any)
+      .returning();
+    return task;
+  }
+
+  async updateTask(id: number, taskUpdate: Partial<Task>): Promise<Task> {
+    const [updatedTask] = await db
+      .update(tasks)
+      .set(taskUpdate as any)
+      .where(eq(tasks.id, id))
+      .returning();
+    
+    if (!updatedTask) {
+      throw new Error("Task not found");
+    }
+    
+    return updatedTask;
+  }
+
+  // Policy acceptance methods
+  async getPolicyAcceptance(id: number): Promise<PolicyAcceptance | undefined> {
+    const [acceptance] = await db.select().from(policyAcceptances).where(eq(policyAcceptances.id, id));
+    return acceptance;
+  }
+
+  async getPolicyAcceptancesByUser(userId: number): Promise<PolicyAcceptance[]> {
+    return await db
+      .select()
+      .from(policyAcceptances)
+      .where(eq(policyAcceptances.userId, userId));
+  }
+
+  async getPolicyAcceptancesByDocument(documentId: number): Promise<PolicyAcceptance[]> {
+    return await db
+      .select()
+      .from(policyAcceptances)
+      .where(eq(policyAcceptances.documentId, documentId));
+  }
+
+  async createPolicyAcceptance(insertAcceptance: InsertPolicyAcceptance): Promise<PolicyAcceptance> {
+    // Check if user has already accepted this policy
+    const [existing] = await db
+      .select()
+      .from(policyAcceptances)
+      .where(
+        and(
+          eq(policyAcceptances.userId, insertAcceptance.userId),
+          eq(policyAcceptances.documentId, insertAcceptance.documentId)
+        )
+      );
+    
+    if (existing) {
+      return existing;
+    }
+    
+    const [acceptance] = await db
+      .insert(policyAcceptances)
+      .values(insertAcceptance as any)
+      .returning();
+    return acceptance;
+  }
+
+  // Activity methods
+  async getActivity(id: number): Promise<Activity | undefined> {
+    const [activity] = await db.select().from(activities).where(eq(activities.id, id));
+    return activity;
+  }
+
+  async getRecentActivities(limit: number): Promise<Activity[]> {
+    return await db
+      .select()
+      .from(activities)
+      .orderBy(desc(activities.createdAt))
+      .limit(limit);
+  }
+
+  async createActivity(insertActivity: InsertActivity): Promise<Activity> {
+    const [activity] = await db
+      .insert(activities)
+      .values(insertActivity as any)
+      .returning();
+    return activity;
+  }
+
+  // Document version methods
+  async getDocumentVersion(id: number): Promise<DocumentVersion | undefined> {
+    const [version] = await db.select().from(documentVersions).where(eq(documentVersions.id, id));
+    return version;
+  }
+
+  async getDocumentVersionsByDocument(documentId: number): Promise<DocumentVersion[]> {
+    return await db
+      .select()
+      .from(documentVersions)
+      .where(eq(documentVersions.documentId, documentId))
+      .orderBy(desc(documentVersions.createdAt));
+  }
+
+  async createDocumentVersion(insertVersion: InsertDocumentVersion): Promise<DocumentVersion> {
+    const [version] = await db
+      .insert(documentVersions)
+      .values(insertVersion as any)
+      .returning();
+    return version;
+  }
+}
+
+export const storage = new DatabaseStorage();
