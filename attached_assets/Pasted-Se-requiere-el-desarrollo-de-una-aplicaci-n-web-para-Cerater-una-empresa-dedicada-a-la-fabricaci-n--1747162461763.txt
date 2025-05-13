@@ -1,0 +1,101 @@
+Se requiere el desarrollo de una aplicación web para Cerater, una empresa dedicada a la fabricación y venta de cerámicas, con el objetivo de gestionar de manera eficiente los procesos internos y las políticas de la empresa. La aplicación debe facilitar la creación, el intercambio, el seguimiento y la aprobación de instrucciones detalladas para los flujos de trabajo, centralizando la información en un repositorio único y facilitando la colaboración entre los empleados.
+
+2. Objetivos Específicos
+
+Centralizar la documentación de procesos internos y políticas de Cerater.
+
+Implementar un sistema de aprobación jerárquico para garantizar la validez y el control de calidad de la información.
+
+Facilitar la comunicación y el acceso a la información actualizada para todos los empleados de Cerater.
+
+Mejorar la eficiencia en la capacitación de nuevos empleados mediante el acceso a documentación clara y organizada.
+
+Asegurar el cumplimiento de las políticas de la empresa mediante el seguimiento de la aceptación por parte de los empleados.
+
+Optimizar la gestión de cambios en los procesos operativos de Cerater.
+
+3. Funcionalidades Esenciales
+
+Gestión de Procesos y Políticas:
+
+Creación, edición y almacenamiento de documentos que describan los procesos internos y las políticas de Cerater.
+
+Soporte para diferentes formatos de documento (texto, imágenes, diagramas, etc.).
+
+Control de versiones para mantener un historial de cambios en los documentos.
+
+Funcionalidad de búsqueda avanzada para localizar rápidamente la información necesaria.
+
+Categorización y etiquetado de documentos para una mejor organización.
+
+Sistema de Aprobación Jerárquico:
+
+Flujos de trabajo de aprobación multinivel, donde los documentos creados por analistas u operadores deben ser revisados y aprobados por managers o coordinadores antes de su publicación.
+
+Configuración flexible de los flujos de trabajo de aprobación, permitiendo adaptarlos a diferentes tipos de procesos y políticas.
+
+Notificaciones automáticas a los revisores y aprobadores cuando un documento está pendiente de aprobación.
+
+Registro de todas las acciones realizadas durante el proceso de aprobación (quién aprobó, cuándo, comentarios, etc.).
+
+Gestión de Tareas:
+
+Asignación de tareas relacionadas con la creación, revisión o actualización de documentos.
+
+Definición de fechas límite y responsables para cada tarea.
+
+Seguimiento del progreso de las tareas, incluyendo estados (pendiente, en progreso, completada, etc.).
+
+Notificaciones sobre la asignación, el vencimiento y la finalización de las tareas.
+
+Notificaciones:
+
+Notificaciones automáticas a los usuarios sobre cambios en los documentos que les afectan.
+
+Configuración de las preferencias de notificación por usuario (correo electrónico, dentro de la aplicación, etc.).
+
+Seguimiento de Aceptación de Políticas:
+
+Mecanismo para que los empleados confirmen que han leído y aceptado las políticas de la empresa.
+
+Registro de la fecha y hora de la aceptación de cada política por parte de cada empleado.
+
+Informes sobre el estado de aceptación de las políticas, mostrando qué empleados han aceptado y cuáles no.
+
+Repositorio Centralizado:
+
+Almacenamiento centralizado de todos los documentos relacionados con los procesos y las políticas de Cerater.
+
+Organización lógica de los documentos para facilitar el acceso y la navegación.
+
+Control de acceso basado en roles, asegurando que cada usuario solo pueda acceder a la información relevante para su puesto.
+
+Gestión de Usuarios y Roles
+
+Registro de usuarios con correos electrónicos individuales.
+
+Definición de roles (ej., Analista, Operador, Manager, Coordinador, Administrador) con diferentes permisos.
+
+Asignación de roles a los usuarios.
+
+4. Requisitos Técnicos
+
+La aplicación debe ser accesible a través de navegadores web modernos.
+
+Base de datos para almacenar la información de los procesos, las políticas, los usuarios y las tareas.
+
+Sistema de autenticación para garantizar la seguridad del acceso a la aplicación.
+
+La aplicación debe ser responsive (adaptarse a diferentes tamaños de pantalla).
+
+5. Consideraciones Específicas para Cerater
+
+La aplicación debe reflejar la identidad visual de Cerater (logo, colores corporativos, etc.).
+
+La terminología utilizada en la aplicación debe ser coherente con la utilizada en Cerater.
+
+Se debe considerar la integración futura con otros sistemas utilizados por Cerater (ej., sistema de gestión de recursos humanos).
+
+6. Énfasis en la Aprobación
+
+El sistema de aprobación es fundamental. La aplicación debe garantizar que ningún proceso o política sea considerado oficial o implementado hasta que haya sido aprobado por el nivel jerárquico correspondiente (Manager o Coordinador). El flujo debe ser claro, con notificaciones automáticas y un registro detallado de quién aprobó y cuándo.
