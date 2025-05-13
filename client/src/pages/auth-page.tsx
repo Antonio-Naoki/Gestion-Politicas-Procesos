@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -40,7 +40,9 @@ const registerSchema = insertUserSchema.extend({
   password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres" }),
   name: z.string().min(1, { message: "El nombre es obligatorio" }),
   email: z.string().email({ message: "Email inválido" }),
-  role: z.string().min(1, { message: "El rol es obligatorio" }),
+  role: z.enum(["admin", "manager", "coordinator", "analyst", "operator"], { 
+    errorMap: () => ({ message: "El rol es obligatorio" }) 
+  }),
   department: z.string().min(1, { message: "El departamento es obligatorio" }),
 });
 
@@ -51,11 +53,13 @@ export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("login");
 
-  // Redirect if already logged in
-  if (user) {
-    navigate("/dashboard");
-    return null;
-  }
+  // Use useEffect for redirection instead of conditional return
+  // This avoids the "Rendered fewer hooks than expected" error
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -74,7 +78,7 @@ export default function AuthPage() {
       password: "",
       name: "",
       email: "",
-      role: "analyst",
+      role: "analyst" as const,
       department: "",
     },
   });
@@ -231,7 +235,9 @@ export default function AuthPage() {
                       <div className="grid gap-2">
                         <Label htmlFor="register-role">Rol</Label>
                         <Select 
-                          onValueChange={(value) => registerForm.setValue("role", value)} 
+                          onValueChange={(value: "admin" | "manager" | "coordinator" | "analyst" | "operator") => {
+                            registerForm.setValue("role", value);
+                          }} 
                           defaultValue={registerForm.getValues("role")}
                         >
                           <SelectTrigger 

@@ -74,21 +74,21 @@ export function Sidebar({ pendingApprovalCount = 0, pendingTaskCount = 0 }: Side
         {/* Navigation */}
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
           <Link href="/dashboard">
-            <a className={`sidebar-link ${isActive("/dashboard") ? "active" : ""}`}>
+            <div className={`sidebar-link ${isActive("/dashboard") ? "active" : ""}`}>
               <LayoutDashboard className="mr-3 h-5 w-5 text-primary" />
               Dashboard
-            </a>
+            </div>
           </Link>
           
           <Link href="/documents">
-            <a className={`sidebar-link ${isActive("/documents") ? "active" : ""}`}>
+            <div className={`sidebar-link ${isActive("/documents") ? "active" : ""}`}>
               <FileText className="mr-3 h-5 w-5 text-neutral-500" />
               Documentos
-            </a>
+            </div>
           </Link>
           
           <Link href="/approvals">
-            <a className={`sidebar-link ${isActive("/approvals") ? "active" : ""}`}>
+            <div className={`sidebar-link ${isActive("/approvals") ? "active" : ""}`}>
               <CheckCircle className="mr-3 h-5 w-5 text-neutral-500" />
               Aprobaciones
               {pendingApprovalCount > 0 && (
@@ -98,11 +98,11 @@ export function Sidebar({ pendingApprovalCount = 0, pendingTaskCount = 0 }: Side
                   </Badge>
                 </span>
               )}
-            </a>
+            </div>
           </Link>
           
           <Link href="/tasks">
-            <a className={`sidebar-link ${isActive("/tasks") ? "active" : ""}`}>
+            <div className={`sidebar-link ${isActive("/tasks") ? "active" : ""}`}>
               <ClipboardList className="mr-3 h-5 w-5 text-neutral-500" />
               Tareas
               {pendingTaskCount > 0 && (
@@ -112,37 +112,37 @@ export function Sidebar({ pendingApprovalCount = 0, pendingTaskCount = 0 }: Side
                   </Badge>
                 </span>
               )}
-            </a>
+            </div>
           </Link>
           
           <Link href="/policies">
-            <a className={`sidebar-link ${isActive("/policies") ? "active" : ""}`}>
+            <div className={`sidebar-link ${isActive("/policies") ? "active" : ""}`}>
               <BookOpen className="mr-3 h-5 w-5 text-neutral-500" />
               Políticas
-            </a>
+            </div>
           </Link>
           
           {(user?.role === "admin" || user?.role === "manager" || user?.role === "coordinator") && (
             <Link href="/users">
-              <a className={`sidebar-link ${isActive("/users") ? "active" : ""}`}>
+              <div className={`sidebar-link ${isActive("/users") ? "active" : ""}`}>
                 <Users className="mr-3 h-5 w-5 text-neutral-500" />
                 Usuarios
-              </a>
+              </div>
             </Link>
           )}
           
           <Link href="/reports">
-            <a className={`sidebar-link ${isActive("/reports") ? "active" : ""}`}>
+            <div className={`sidebar-link ${isActive("/reports") ? "active" : ""}`}>
               <BarChart2 className="mr-3 h-5 w-5 text-neutral-500" />
               Reportes
-            </a>
+            </div>
           </Link>
           
           <Link href="/settings">
-            <a className={`sidebar-link ${isActive("/settings") ? "active" : ""}`}>
+            <div className={`sidebar-link ${isActive("/settings") ? "active" : ""}`}>
               <Settings className="mr-3 h-5 w-5 text-neutral-500" />
               Configuración
-            </a>
+            </div>
           </Link>
         </nav>
         
