@@ -1,33 +1,3 @@
-1. Primero, vamos a crear un archivo .env de ejemplo:
-
-Created .env.example
-2. Ahora, vamos a crear un script para exportar la base de datos con los datos actuales:
-
-Created export-database.sh
-3. Vamos a crear un script para generar un archivo ZIP con el proyecto completo:
-
-Created export-project.sh
-4. Vamos a crear un archivo .gitignore adecuado para el proyecto:
-
-Edited .gitignore
-5. Vamos a exportar la estructura y datos de la base de datos:
-
-Executed pg_dump --no-owner --clean --if-exists -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE > database-full.sql
-6. Vamos a verificar los archivos generados:
-
-Executed ls -la *.sql .env.example export-*.sh
-7. Finalmente, vamos a crear un script para la instalación local:
-
-Created local-setup.sh
-8. Vamos a crear un archivo ZIP con todo el proyecto para su descarga:
-
-Executed mkdir -p cerater-export cp -r client server shared components.json drizzle.config.ts package.json package-lock.json postcss.config.js tailwind.config.ts tsconfig.json vite.config.ts README.md .env.example backup.sql database-full.sql local-setup.sh .gitignore cerater-export/ zip -r cerater-project.zip cerater-export rm -rf cerater-export ls -la cerater-project.zip
-Parece que el comando zip no está disponible en este entorno. Vamos a intentar crear un archivo tar.gz en su lugar:
-
-
-Executed mkdir -p cerater-export cp -r client server shared components.json drizzle.config.ts package.json package-lock.json postcss.config.js tailwind.config.ts tsconfig.json vite.config.ts README.md .env.example backup.sql database-full.sql local-setup.sh .gitignore cerater-export/ tar -czf cerater-project.tar.gz cerater-export rm -rf cerater-export ls -la cerater-project.tar.gz
-¡Perfecto! Todo está listo para que puedas descargar y ejecutar el proyecto en tu computadora local.
-
 Instrucciones para exportar y ejecutar el proyecto en tu PC local:
 1. Exportación:
 He generado un archivo comprimido cerater-project.tar.gz que contiene todo el proyecto
