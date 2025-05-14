@@ -14,6 +14,8 @@ import ApprovalsPage from "@/pages/approvals-page";
 import TasksPage from "@/pages/tasks-page";
 import PoliciesPage from "@/pages/policies-page";
 import UsersPage from "@/pages/users-page";
+import ReportsPage from "@/pages/reports-page";
+import SettingsPage from "@/pages/settings-page";
 
 function Router() {
   return (
@@ -26,6 +28,8 @@ function Router() {
       <ProtectedRoute path="/tasks" component={TasksPage} />
       <ProtectedRoute path="/policies" component={PoliciesPage} />
       <ProtectedRoute path="/users" component={UsersPage} />
+      <ProtectedRoute path="/reports" component={ReportsPage} />
+      <ProtectedRoute path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
   );
