@@ -17,7 +17,7 @@ export default function SettingsPage() {
   
   const isAdmin = user?.role === 'admin';
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
@@ -31,7 +31,7 @@ export default function SettingsPage() {
     }, 1000);
   };
 
-  const handleSavePassword = (e) => {
+  const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
@@ -45,7 +45,7 @@ export default function SettingsPage() {
     }, 1000);
   };
 
-  const handleSaveNotifications = (e) => {
+  const handleSaveNotifications = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     

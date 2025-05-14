@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { Document, Approval, Task } from "@shared/schema";
 
 ChartJS.register(
   CategoryScale,
@@ -34,19 +35,19 @@ ChartJS.register(
 export default function ReportsPage() {
   const [timePeriod, setTimePeriod] = useState("month");
   
-  const { data: documents } = useQuery({
+  const { data: documents = [] } = useQuery<Document[]>({
     queryKey: ["/api/documents"],
   });
   
-  const { data: approvals } = useQuery({
+  const { data: approvals = [] } = useQuery<Approval[]>({
     queryKey: ["/api/approvals"],
   });
   
-  const { data: tasks } = useQuery({
+  const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
   });
   
-  const { data: activities } = useQuery({
+  const { data: activities = [] } = useQuery<any[]>({
     queryKey: ["/api/activities"],
   });
 
