@@ -1,0 +1,57 @@
+1. Primero, vamos a crear un archivo .env de ejemplo:
+
+Created .env.example
+2. Ahora, vamos a crear un script para exportar la base de datos con los datos actuales:
+
+Created export-database.sh
+3. Vamos a crear un script para generar un archivo ZIP con el proyecto completo:
+
+Created export-project.sh
+4. Vamos a crear un archivo .gitignore adecuado para el proyecto:
+
+Edited .gitignore
+5. Vamos a exportar la estructura y datos de la base de datos:
+
+Executed pg_dump --no-owner --clean --if-exists -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE > database-full.sql
+6. Vamos a verificar los archivos generados:
+
+Executed ls -la *.sql .env.example export-*.sh
+7. Finalmente, vamos a crear un script para la instalación local:
+
+Created local-setup.sh
+8. Vamos a crear un archivo ZIP con todo el proyecto para su descarga:
+
+Executed mkdir -p cerater-export cp -r client server shared components.json drizzle.config.ts package.json package-lock.json postcss.config.js tailwind.config.ts tsconfig.json vite.config.ts README.md .env.example backup.sql database-full.sql local-setup.sh .gitignore cerater-export/ zip -r cerater-project.zip cerater-export rm -rf cerater-export ls -la cerater-project.zip
+Parece que el comando zip no está disponible en este entorno. Vamos a intentar crear un archivo tar.gz en su lugar:
+
+
+Executed mkdir -p cerater-export cp -r client server shared components.json drizzle.config.ts package.json package-lock.json postcss.config.js tailwind.config.ts tsconfig.json vite.config.ts README.md .env.example backup.sql database-full.sql local-setup.sh .gitignore cerater-export/ tar -czf cerater-project.tar.gz cerater-export rm -rf cerater-export ls -la cerater-project.tar.gz
+¡Perfecto! Todo está listo para que puedas descargar y ejecutar el proyecto en tu computadora local.
+
+Instrucciones para exportar y ejecutar el proyecto en tu PC local:
+1. Exportación:
+He generado un archivo comprimido cerater-project.tar.gz que contiene todo el proyecto
+Este archivo incluye todos los archivos de código fuente, configuraciones y scripts necesarios
+También incluye los archivos SQL para la base de datos:
+backup.sql - Solo la estructura de la base de datos
+database-full.sql - Estructura completa con todos los datos actuales
+2. Configuración en tu PC local:
+Descomprime el archivo cerater-project.tar.gz en tu computadora
+Instala PostgreSQL en tu computadora si aún no lo tienes
+Crea una base de datos para el proyecto:
+CREATE DATABASE cerater;
+Crea un archivo .env basado en .env.example con tus credenciales locales
+Restaura la base de datos usando uno de los archivos SQL:
+psql -U tu_usuario -d cerater -f database-full.sql
+Instala las dependencias del proyecto:
+npm install
+Inicia la aplicación:
+npm run dev
+3. Scripts de ayuda:
+local-setup.sh - Script para ayudarte con la configuración local
+export-database.sh - Script para exportar la base de datos a archivos SQL
+export-project.sh - Script para crear un archivo ZIP del proyecto
+4. Credenciales para iniciar sesión:
+Usuario: admin
+Contraseña: admin123
+El proyecto ahora está completamente configurado con PostgreSQL, tiene todas las secciones implementadas (incluyendo reportes y configuración) y está listo para ser ejecutado en tu computadora local. ¿Hay algo más que necesites para la exportación?
