@@ -25,3 +25,85 @@ export-project.sh - Script para crear un archivo ZIP del proyecto
 Usuario: admin
 Contraseña: admin123
 El proyecto ahora está completamente configurado con PostgreSQL, tiene todas las secciones implementadas (incluyendo reportes y configuración) y está listo para ser ejecutado en tu computadora local. ¿Hay algo más que necesites para la exportación?
+
+# Clonar el repositorio
+git clone <url-del-repositorio> cd TaskTrackMaster
+# Instalar dependencias
+npm install
+# Instalar dependencias específicas para PostgreSQL
+npm install pg @types/pg npm uninstall @neondatabase/serverless # Si existe
+```
+
+### 3. Configurar la Base de Datos
+
+1. Crear la base de datos:
+```bash
+psql -U postgres
+# Ingresar la contraseña cuando se solicite
+CREATE DATABASE cerater;
+\q
+```
+```
+1. Crear el archivo en la raíz del proyecto: `.env`
+```
+DATABASE_URL=postgresql://postgres:admin@localhost:5432/cerater
+PGUSER=postgres
+PGPASSWORD=admin
+PGDATABASE=cerater
+PGHOST=localhost
+PGPORT=5432
+SESSION_SECRET=algun-secreto-seguro-123
+```
+1. Importar el esquema de la base de datos:
+``` bash
+# Navegar al directorio del proyecto donde está backup.sql
+psql -U postgres -d cerater -f backup.sql
+```
+1. Verificar la instalación:
+``` bash
+psql -U postgres -d cerater
+\dt  # Debería mostrar todas las tablas
+\q
+```
+### 4. Modificar la Conexión a la Base de Datos
+Actualizar el archivo : `server/db.ts`
+``` typescript
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import * as schema from "@shared/schema";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
+}
+
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle(pool, { schema });
+```
+### 5. Iniciar la Aplicación
+``` bash
+# Iniciar en modo desarrollo
+npm run dev
+```
+La aplicación estará disponible en: `http://localhost:5000`
+### 6. Credenciales por Defecto
+- **Usuario**: admin
+- **Contraseña**: admin123
+
+[... mantener el resto de las secciones del README ...]
+## Solución de Problemas
+### Errores Comunes
+1. **Error de Conexión a PostgreSQL**:
+    - Verificar que PostgreSQL esté corriendo
+    - Confirmar las credenciales en el archivo `.env`
+    - Asegurarse de que el puerto 5432 esté disponible
+
+2. **Error al Importar el Backup**:
+    - Verificar la ruta del archivo backup.sql
+    - Asegurarse de usar comillas si la ruta contiene espacios
+    - Confirmar permisos de lectura en el archivo
+
+3. **Codificación de Caracteres**:
+    - Si hay problemas con caracteres especiales, verificar la codificación de la consola
+    - Usar UTF-8 como codificación predeterminada

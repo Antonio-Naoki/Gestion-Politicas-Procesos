@@ -27,12 +27,17 @@ Cerater es una aplicación web desarrollada para gestionar procesos internos y p
 
 - Node.js v18 o superior
 - npm v8 o superior
-- PostgreSQL v14 o superior
+- PostgreSQL v17.5 o superior
+- psql (cliente de PostgreSQL)
 
 ## Instalación y Configuración
 
-### 1. Clonar el Repositorio
+### 1. Preparar PostgreSQL
 
+1. Asegúrate de tener PostgreSQL instalado y funcionando
+2. Toma nota de la contraseña del usuario 'postgres'
+
+### 2. Clonar y Configurar el Proyecto
 ```bash
 git clone <url-del-repositorio>
 cd cerater-app
@@ -180,3 +185,10 @@ Este proyecto es propiedad de Cerater y está protegido por derechos de autor.
 ## Contacto
 
 Para más información, contactar al departamento de IT de Cerater.
+
+Este README actualizado incluye:
+- Pasos específicos para la instalación de PostgreSQL local
+- Comandos exactos utilizados para la configuración
+- Solución de problemas comunes
+- Versiones específicas de las dependencias
+- Instrucciones detalladas para la migración desde Neon Database
