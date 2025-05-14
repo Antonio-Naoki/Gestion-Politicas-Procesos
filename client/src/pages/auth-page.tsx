@@ -366,7 +366,7 @@ export default function AuthPage() {
             </li>
           </ul>
           <img 
-            src="https://pixabay.com/get/g00b9e2d22c630fcdb1ecbfe40596e91babb8132ec8f9fa42bb26d971b7f7e6b16c908b73b969fe5e8a1651e97bc867cf399df130ffe3d8882b722ca1966a0b72_1280.jpg" 
+            src="https://hegel.edu.pe/blog/wp-content/uploads/2023/09/Gestion-de-Procesos-Optimizacion-para-el-exito-Empresarial.jpg"
             alt="Process Workflow Diagram" 
             className="rounded-lg shadow-lg max-w-full opacity-80"
           />
