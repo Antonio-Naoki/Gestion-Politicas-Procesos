@@ -156,9 +156,9 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
       <DialogContent className="max-w-2xl w-full max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 py-4 border-b border-neutral-200 flex flex-row items-center justify-between">
           <DialogTitle className="text-lg font-semibold text-neutral-900">Crear Nuevo Documento</DialogTitle>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancel}>
-            <X className="h-4 w-4" />
-          </Button>
+          {/*<Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCancel}>*/}
+          {/*  <X className="h-4 w-4" />*/}
+          {/*</Button>*/}
         </DialogHeader>
         
         <div className="flex-1 overflow-y-auto p-6">
