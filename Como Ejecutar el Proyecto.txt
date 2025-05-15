@@ -107,3 +107,31 @@ La aplicación estará disponible en: `http://localhost:5000`
 3. **Codificación de Caracteres**:
     - Si hay problemas con caracteres especiales, verificar la codificación de la consola
     - Usar UTF-8 como codificación predeterminada
+
+
+
+RESPALDO BACKUP.SQL
+Método 1: Usando pgAdmin (GUI)
+Abre pgAdmin y conéctate a tu servidor.
+
+Navega hasta tu base de datos (en el árbol de conexiones).
+
+Haz clic derecho sobre la base de datos → Backup....
+
+Configura el backup:
+
+Filename: Elige la ruta donde guardarás el archivo (ej: C:\backups\mi_respaldo.sql).
+
+Format: Selecciona Plain (para un archivo .sql legible).
+
+Encoding: Usa UTF8.
+
+En la pestaña Dump Options:
+
+Marca "Only schema" si solo quieres estructura.
+
+Marca "Only data" si solo quieres datos.
+
+Deja ambos sin marcar para estructura + datos.
+
+Haz clic en Backup y espera a que termine.
