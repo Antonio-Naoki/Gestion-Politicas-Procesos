@@ -14,41 +14,96 @@ export default function SettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  
+
   const isAdmin = user?.role === 'admin';
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+
+    try {
+      const formData = new FormData(e.target as HTMLFormElement);
+      const data = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        department: formData.get('department'),
+      };
+
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar el perfil');
+      }
+
       toast({
         title: "Perfil actualizado",
         description: "Tu perfil ha sido actualizado correctamente.",
       });
-    }, 1000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el perfil. Por favor intenta de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSavePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      toast({
-        title: "Contraseña actualizada",
-        description: "Tu contraseña ha sido actualizada correctamente.",
-      });
-    }, 1000);
-  };
+const handleSavePassword = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+
+  try {
+    const formData = new FormData(e.target as HTMLFormElement);
+    const currentPassword = formData.get('current-password');
+    const newPassword = formData.get('new-password');
+    const confirmPassword = formData.get('confirm-password');
+
+    if (newPassword !== confirmPassword) {
+      throw new Error('Las contraseñas no coinciden');
+    }
+
+    const response = await fetch('/api/profile/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al actualizar la contraseña');
+    }
+
+    toast({
+      title: "Contraseña actualizada",
+      description: "Tu contraseña ha sido actualizada correctamente.",
+    });
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: error.message || "No se pudo actualizar la contraseña. Por favor intenta de nuevo.",
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSaveNotifications = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     // Simulate API call
     setTimeout(() => {
       setLoading(false);
@@ -89,16 +144,16 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nombre completo</Label>
-                    <Input id="name" defaultValue={user?.name} />
+                    <Input id="name" name="name" defaultValue={user?.name} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Correo electrónico</Label>
-                    <Input id="email" type="email" defaultValue={user?.email} />
+                    <Input id="email" name="email" type="email" defaultValue={user?.email} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="department">Departamento</Label>
-                  <Input id="department" defaultValue={user?.department} disabled={!isAdmin} />
+                  <Input id="department" name="department" defaultValue={user?.department} readOnly={!isAdmin} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Rol</Label>
@@ -132,15 +187,15 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="current-password">Contraseña actual</Label>
-                  <Input id="current-password" type="password" />
+                  <Input id="current-password" name="current-password" type="password" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-password">Nueva contraseña</Label>
-                  <Input id="new-password" type="password" />
+                  <Input id="new-password" name="new-password" type="password" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirmar contraseña</Label>
-                  <Input id="confirm-password" type="password" />
+                  <Input id="confirm-password" name="confirm-password" type="password" />
                 </div>
               </CardContent>
               <CardFooter>
