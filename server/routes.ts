@@ -441,6 +441,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Ruta para actualizar un usuario (admin/manager)
+  app.put("/api/users/:id", isAuthenticated, checkRole(["admin", "manager"]), async (req, res) => {
+    try {
+      const userId = Number(req.params.id);
+      const userData = req.body;
+
+      // Verificar que el usuario existe
+      const userToUpdate = await storage.getUser(userId);
+      if (!userToUpdate) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      // Actualizar el usuario
+      const updatedUser = await storage.updateUser(userId, userData);
+
+      // Registrar la actividad
+      await storage.createActivity({
+        userId: req.user.id,
+        action: "update",
+        entityType: "user",
+        entityId: userId,
+        details: { updatedFields: Object.keys(userData) }
+      });
+
+      // Eliminar la contraseña de la respuesta
+      const { password, ...sanitizedUser } = updatedUser;
+
+      res.json({ 
+        message: "Usuario actualizado correctamente",
+        user: sanitizedUser 
+      });
+    } catch (error) {
+      console.error("Error actualizando usuario:", error);
+      res.status(500).json({ message: "Error al actualizar el usuario" });
+    }
+  });
+
   // Activity routes
   app.get("/api/activities", isAuthenticated, async (req, res) => {
     try {
