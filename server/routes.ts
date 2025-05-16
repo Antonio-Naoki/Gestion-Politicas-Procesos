@@ -455,6 +455,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 // En server/routes.ts - añadir estas rutas junto con las demás
 
+// Ruta para restablecer la contraseña de un usuario (admin/manager)
+app.put("/api/users/:id/reset-password", isAuthenticated, checkRole(["admin", "manager"]), async (req, res) => {
+  try {
+    const userId = Number(req.params.id);
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ message: "La contraseña es requerida" });
+    }
+
+    // Verificar que el usuario existe
+    const userToUpdate = await storage.getUser(userId);
+    if (!userToUpdate) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Actualizar la contraseña
+    const updated = await storage.updateUserPassword(userId, password);
+
+    if (!updated) {
+      return res.status(500).json({ message: "Error al actualizar la contraseña" });
+    }
+
+    // Registrar la actividad
+    await storage.createActivity({
+      userId: req.user.id,
+      action: "update",
+      entityType: "user_password",
+      entityId: userId,
+      details: { updatedAt: new Date() }
+    });
+
+    res.json({ message: "Contraseña actualizada correctamente" });
+  } catch (error) {
+    console.error("Error actualizando contraseña de usuario:", error);
+    res.status(500).json({ message: "Error al actualizar la contraseña del usuario" });
+  }
+});
+
 // Ruta para actualizar el perfil del usuario
 // En server/routes.ts
 app.put("/api/profile", isAuthenticated, async (req, res) => {

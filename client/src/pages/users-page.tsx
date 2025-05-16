@@ -77,32 +77,35 @@ export default function UsersPage() {
   const [showEditUserDialog, setShowEditUserDialog] = useState(false);
   const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  
+
   const { toast } = useToast();
   const { user } = useAuth();
-  
+
   // If user is not admin, manager or coordinator, redirect
   const isAuthorized = ["admin", "manager", "coordinator"].includes(user?.role || "");
-  
+
+  // Check if user has permission to edit users (only admin and manager)
+  const canEditUsers = ["admin", "manager"].includes(user?.role || "");
+
   // Get pending approvals and tasks counts for the sidebar
   const { data: approvals } = useQuery({
     queryKey: ["/api/approvals"],
     select: (data) => data.filter(approval => approval.status === "pending")
   });
-  
+
   const { data: tasks } = useQuery({
     queryKey: ["/api/tasks"],
     select: (data) => data.filter(task => 
       task.status === "pending" || task.status === "in_progress"
     )
   });
-  
+
   // Get all users
   const { data: users, isLoading, isError } = useQuery<User[]>({
     queryKey: ["/api/users"],
     enabled: isAuthorized
   });
-  
+
   // Create user form
   const {
     register: registerNewUser,
@@ -121,7 +124,7 @@ export default function UsersPage() {
       department: "",
     },
   });
-  
+
   // Edit user form
   const {
     register: registerEditUser,
@@ -132,12 +135,12 @@ export default function UsersPage() {
   } = useForm<EditUserFormValues>({
     resolver: zodResolver(editUserFormSchema),
   });
-  
+
   // Reset password form
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isResetting, setIsResetting] = useState(false);
-  
+
   // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: async (userData: UserFormValues) => {
@@ -161,7 +164,7 @@ export default function UsersPage() {
       });
     },
   });
-  
+
   // Update user mutation
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, userData }: { id: number, userData: Partial<User> }) => {
@@ -185,7 +188,7 @@ export default function UsersPage() {
       });
     },
   });
-  
+
   // Reset password mutation
   const resetPasswordMutation = useMutation({
     mutationFn: async ({ id, password }: { id: number, password: string }) => {
@@ -209,7 +212,7 @@ export default function UsersPage() {
       });
     },
   });
-  
+
   // Filter users based on search and filters
   const filteredUsers = users?.filter(user => {
     // Search query filter
@@ -218,31 +221,31 @@ export default function UsersPage() {
         user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.email.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
-    
+
     // Role filter
     const matchesRole = roleFilter === "all" ? true : user.role === roleFilter;
-    
+
     // Department filter
     const matchesDepartment = departmentFilter === "all" ? true : user.department === departmentFilter;
-    
+
     return matchesSearch && matchesRole && matchesDepartment;
   });
-  
+
   // Get unique departments for filter options
   const departments = users 
     ? [...new Set(users.map(user => user.department))]
     : [];
-  
+
   const handleCreateUser = (data: UserFormValues) => {
     createUserMutation.mutate(data);
   };
-  
+
   const handleEditUser = (data: EditUserFormValues) => {
     if (selectedUser) {
       updateUserMutation.mutate({ id: selectedUser.id, userData: data });
     }
   };
-  
+
   const handleResetPassword = () => {
     if (!newPassword || !confirmPassword) {
       toast({
@@ -252,7 +255,7 @@ export default function UsersPage() {
       });
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       toast({
         title: "Error",
@@ -261,7 +264,7 @@ export default function UsersPage() {
       });
       return;
     }
-    
+
     if (newPassword.length < 6) {
       toast({
         title: "Error",
@@ -270,9 +273,9 @@ export default function UsersPage() {
       });
       return;
     }
-    
+
     setIsResetting(true);
-    
+
     if (selectedUser) {
       resetPasswordMutation.mutate(
         { id: selectedUser.id, password: newPassword },
@@ -284,8 +287,18 @@ export default function UsersPage() {
       );
     }
   };
-  
+
   const openEditUserDialog = (user: User) => {
+    // Only allow admin and manager to edit users
+    if (!canEditUsers) {
+      toast({
+        title: "Acceso denegado",
+        description: "No tienes permisos para editar usuarios",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSelectedUser(user);
     resetEditUser({
       username: user.username,
@@ -296,14 +309,24 @@ export default function UsersPage() {
     });
     setShowEditUserDialog(true);
   };
-  
+
   const openResetPasswordDialog = (user: User) => {
+    // Only allow admin and manager to reset passwords
+    if (!canEditUsers) {
+      toast({
+        title: "Acceso denegado",
+        description: "No tienes permisos para restablecer contraseñas",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSelectedUser(user);
     setNewPassword("");
     setConfirmPassword("");
     setShowResetPasswordDialog(true);
   };
-  
+
   const getRoleName = (role: string) => {
     switch (role) {
       case "admin": return "Administrador";
@@ -327,12 +350,14 @@ export default function UsersPage() {
             Administra los usuarios y sus roles en el sistema
           </p>
         </div>
-        <Button onClick={() => setShowNewUserDialog(true)}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Nuevo Usuario
-        </Button>
+        {canEditUsers && (
+          <Button onClick={() => setShowNewUserDialog(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Nuevo Usuario
+          </Button>
+        )}
       </div>
-      
+
       <Card className="mb-6">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Filtros</CardTitle>
@@ -365,7 +390,7 @@ export default function UsersPage() {
                   <SelectItem value="operator">Operador</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Departamento" />
@@ -383,7 +408,7 @@ export default function UsersPage() {
           </div>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Usuarios</CardTitle>
@@ -434,22 +459,28 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell>{user.department}</TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditUserDialog(user)}
-                          title="Editar usuario"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openResetPasswordDialog(user)}
-                          title="Restablecer contraseña"
-                        >
-                          <Lock className="h-4 w-4" />
-                        </Button>
+                        {canEditUsers ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditUserDialog(user)}
+                              title="Editar usuario"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openResetPasswordDialog(user)}
+                              title="Restablecer contraseña"
+                            >
+                              <Lock className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Solo visualización</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -465,9 +496,22 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
-      
+
       {/* New User Dialog */}
-      <Dialog open={showNewUserDialog} onOpenChange={setShowNewUserDialog}>
+      <Dialog 
+        open={showNewUserDialog} 
+        onOpenChange={(open) => {
+          // Only allow admin and manager to open the dialog
+          if (open && !canEditUsers) {
+            toast({
+              title: "Acceso denegado",
+              description: "No tienes permisos para crear usuarios",
+              variant: "destructive",
+            });
+            return;
+          }
+          setShowNewUserDialog(open);
+        }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Crear Nuevo Usuario</DialogTitle>
@@ -475,7 +519,7 @@ export default function UsersPage() {
               Complete el formulario para crear un nuevo usuario en el sistema.
             </DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmitNewUser(handleCreateUser)} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -492,7 +536,7 @@ export default function UsersPage() {
                   <p className="text-xs text-destructive">{errorsNewUser.username.message}</p>
                 )}
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="password">
                   Contraseña <span className="text-destructive">*</span>
@@ -509,7 +553,7 @@ export default function UsersPage() {
                 )}
               </div>
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="name">
                 Nombre completo <span className="text-destructive">*</span>
@@ -524,7 +568,7 @@ export default function UsersPage() {
                 <p className="text-xs text-destructive">{errorsNewUser.name.message}</p>
               )}
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="email">
                 Correo electrónico <span className="text-destructive">*</span>
@@ -540,7 +584,7 @@ export default function UsersPage() {
                 <p className="text-xs text-destructive">{errorsNewUser.email.message}</p>
               )}
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="role">
@@ -575,7 +619,7 @@ export default function UsersPage() {
                   <p className="text-xs text-destructive">{errorsNewUser.role.message}</p>
                 )}
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="department">
                   Departamento <span className="text-destructive">*</span>
@@ -610,7 +654,7 @@ export default function UsersPage() {
                 )}
               </div>
             </div>
-            
+
             <DialogFooter className="pt-4">
               <Button
                 type="button"
@@ -643,9 +687,22 @@ export default function UsersPage() {
           </form>
         </DialogContent>
       </Dialog>
-      
+
       {/* Edit User Dialog */}
-      <Dialog open={showEditUserDialog} onOpenChange={setShowEditUserDialog}>
+      <Dialog 
+        open={showEditUserDialog} 
+        onOpenChange={(open) => {
+          // Only allow admin and manager to open the dialog
+          if (open && !canEditUsers) {
+            toast({
+              title: "Acceso denegado",
+              description: "No tienes permisos para editar usuarios",
+              variant: "destructive",
+            });
+            return;
+          }
+          setShowEditUserDialog(open);
+        }}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Editar Usuario</DialogTitle>
@@ -653,7 +710,7 @@ export default function UsersPage() {
               Actualice la información del usuario.
             </DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmitEditUser(handleEditUser)} className="space-y-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-username">
@@ -669,7 +726,7 @@ export default function UsersPage() {
                 <p className="text-xs text-destructive">{errorsEditUser.username.message}</p>
               )}
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="edit-name">
                 Nombre completo <span className="text-destructive">*</span>
@@ -684,7 +741,7 @@ export default function UsersPage() {
                 <p className="text-xs text-destructive">{errorsEditUser.name.message}</p>
               )}
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="edit-email">
                 Correo electrónico <span className="text-destructive">*</span>
@@ -700,7 +757,7 @@ export default function UsersPage() {
                 <p className="text-xs text-destructive">{errorsEditUser.email.message}</p>
               )}
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-role">
@@ -735,7 +792,7 @@ export default function UsersPage() {
                   <p className="text-xs text-destructive">{errorsEditUser.role.message}</p>
                 )}
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="edit-department">
                   Departamento <span className="text-destructive">*</span>
@@ -770,7 +827,7 @@ export default function UsersPage() {
                 )}
               </div>
             </div>
-            
+
             <DialogFooter className="pt-4">
               <Button
                 type="button"
@@ -803,9 +860,22 @@ export default function UsersPage() {
           </form>
         </DialogContent>
       </Dialog>
-      
+
       {/* Reset Password Dialog */}
-      <Dialog open={showResetPasswordDialog} onOpenChange={setShowResetPasswordDialog}>
+      <Dialog 
+        open={showResetPasswordDialog} 
+        onOpenChange={(open) => {
+          // Only allow admin and manager to open the dialog
+          if (open && !canEditUsers) {
+            toast({
+              title: "Acceso denegado",
+              description: "No tienes permisos para restablecer contraseñas",
+              variant: "destructive",
+            });
+            return;
+          }
+          setShowResetPasswordDialog(open);
+        }}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Restablecer Contraseña</DialogTitle>
@@ -813,7 +883,7 @@ export default function UsersPage() {
               Establecer una nueva contraseña para {selectedUser?.name}.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="new-password">
@@ -827,7 +897,7 @@ export default function UsersPage() {
                 placeholder="••••••"
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="confirm-password">
                 Confirmar contraseña <span className="text-destructive">*</span>
@@ -844,7 +914,7 @@ export default function UsersPage() {
               )}
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button
               variant="outline"
