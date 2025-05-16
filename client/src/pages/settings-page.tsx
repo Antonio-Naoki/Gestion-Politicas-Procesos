@@ -153,7 +153,21 @@ const handleSavePassword = async (e: React.FormEvent) => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="department">Departamento</Label>
-                  <Input id="department" name="department" defaultValue={user?.department} readOnly={!isAdmin} />
+                  {isAdmin ? (
+                    <Select id="department" name="department" defaultValue={user?.department}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar departamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Administration">Administración</SelectItem>
+                        <SelectItem value="Production">Producción</SelectItem>
+                        <SelectItem value="Quality">Calidad</SelectItem>
+                        <SelectItem value="Operations">Operaciones</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input id="department" name="department" defaultValue={user?.department} readOnly />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Rol</Label>
