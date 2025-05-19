@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/main-layout";
 import { ApprovalItem } from "@/components/approvals/approval-item";
 import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
-import { Document, Approval, User } from "@shared/schema";
+import { Document, Approval, User, Task } from "@shared/schema";
 import { 
   Card,
   CardContent,
@@ -31,7 +31,8 @@ import {
   XCircle,
   Clock,
   Search,
-  Loader2
+  Loader2,
+  RotateCw
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +40,23 @@ import { useToast } from "@/hooks/use-toast";
 type ExtendedApproval = Approval & {
   entityData?: any;
   entityCreator?: Partial<User>;
+};
+
+type ApprovalItem = {
+  id: number;
+  type: 'approval' | 'document' | 'task' | 'policy';
+  status: string;
+  title: string;
+  description?: string;
+  department?: string;
+  category?: string;
+  priority?: string;
+  createdAt: Date;
+  createdBy?: number;
+  createdByUser?: Partial<User>;
+  entityType?: string;
+  entityId?: number;
+  entityData?: any;
 };
 
 export default function ApprovalsPage() {
@@ -54,7 +72,7 @@ export default function ApprovalsPage() {
   const { toast } = useToast();
 
   // Get pending tasks count for the badge in the sidebar
-  const { data: tasks } = useQuery({
+  const { data: sidebarTasks } = useQuery({
     queryKey: ["/api/tasks"],
     select: (data) => data.filter(task => 
       task.status === "pending" || task.status === "in_progress"
@@ -62,46 +80,132 @@ export default function ApprovalsPage() {
   });
 
   // Get all approvals with their documents and creators
-  const { data: allApprovals, isLoading, isError } = useQuery<ExtendedApproval[]>({
+  const { data: allApprovals, isLoading: approvalsLoading } = useQuery<ExtendedApproval[]>({
     queryKey: ["/api/approvals"]
   });
 
-  // Filter approvals based on search and filters
-  const filteredApprovals = allApprovals?.filter(approval => {
+  // Get all tasks
+  const { data: allTasks, isLoading: tasksLoading } = useQuery<Task[]>({
+    queryKey: ["/api/tasks"]
+  });
+
+  // Get all documents (including policies)
+  const { data: allDocuments, isLoading: documentsLoading } = useQuery<Document[]>({
+    queryKey: ["/api/documents"]
+  });
+
+  // Get users for creator information
+  const { data: users } = useQuery<User[]>({
+    queryKey: ["/api/users"]
+  });
+
+  // Combine all items into a single list
+  const allItems: ApprovalItem[] = [];
+
+  // Add approvals
+  if (allApprovals) {
+    allApprovals.forEach(approval => {
+      allItems.push({
+        id: approval.id,
+        type: 'approval',
+        status: approval.status,
+        title: approval.entityData?.title || "Sin título",
+        description: approval.entityData?.description,
+        department: approval.entityData?.department,
+        category: approval.entityData?.category,
+        createdAt: new Date(approval.createdAt),
+        createdBy: approval.createdBy,
+        createdByUser: users?.find(u => u.id === approval.createdBy),
+        entityType: approval.entityType,
+        entityId: approval.entityId,
+        entityData: approval.entityData
+      });
+    });
+  }
+
+  // Add tasks
+  if (allTasks) {
+    allTasks.forEach(task => {
+      allItems.push({
+        id: task.id,
+        type: 'task',
+        status: task.status,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        createdAt: new Date(task.createdAt),
+        createdBy: task.createdBy,
+        createdByUser: users?.find(u => u.id === task.createdBy),
+        entityType: 'task',
+        entityId: task.id,
+        entityData: task
+      });
+    });
+  }
+
+  // Add documents and policies
+  if (allDocuments) {
+    allDocuments.forEach(doc => {
+      allItems.push({
+        id: doc.id,
+        type: doc.category === 'policy' ? 'policy' : 'document',
+        status: doc.status,
+        title: doc.title,
+        description: doc.description,
+        department: doc.department,
+        category: doc.category,
+        createdAt: new Date(doc.createdAt),
+        createdBy: doc.createdBy,
+        createdByUser: users?.find(u => u.id === doc.createdBy),
+        entityType: doc.category === 'policy' ? 'policy' : 'document',
+        entityId: doc.id,
+        entityData: doc
+      });
+    });
+  }
+
+  // Filter items based on search and filters
+  const filteredItems = allItems.filter(item => {
     // Entity type filter
-    const matchesEntityType = entityTypeFilter === "all" ? true : approval.entityType === entityTypeFilter;
+    const matchesEntityType = entityTypeFilter === "all" ? true : 
+                             (entityTypeFilter === "document" && (item.type === 'document' || item.category === 'document')) ||
+                             (entityTypeFilter === "task" && item.type === 'task') ||
+                             (entityTypeFilter === "policy" && (item.type === 'policy' || item.category === 'policy'));
 
     // Status filter
-    const matchesStatus = statusFilter === "all" ? true : approval.status === statusFilter;
+    const matchesStatus = statusFilter === "all" ? true : item.status === statusFilter;
 
     // Search query filter
     let matchesSearch = true;
     if (searchQuery) {
-      const title = approval.entityData?.title || "";
-      const description = approval.entityData?.description || "";
-      matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                     description.toLowerCase().includes(searchQuery.toLowerCase());
+      matchesSearch = (item.title?.toLowerCase().includes(searchQuery.toLowerCase()) || false) ||
+                     (item.description?.toLowerCase().includes(searchQuery.toLowerCase()) || false);
     }
 
     // Department filter - only applies to documents and policies
     let matchesDepartment = true;
-    if (departmentFilter !== "all" && (approval.entityType === "document" || approval.entityType === "policy")) {
-      matchesDepartment = approval.entityData?.department === departmentFilter;
+    if (departmentFilter !== "all" && (item.type === "document" || item.type === "policy")) {
+      matchesDepartment = item.department === departmentFilter;
     }
 
     return matchesSearch && matchesStatus && matchesDepartment && matchesEntityType;
   });
 
-  // Separate approvals by status
-  const pendingApprovals = filteredApprovals?.filter(approval => approval.status === "pending") || [];
-  const approvedApprovals = filteredApprovals?.filter(approval => approval.status === "approved") || [];
-  const rejectedApprovals = filteredApprovals?.filter(approval => approval.status === "rejected") || [];
+  // Separate items by status
+  const pendingItems = filteredItems.filter(item => item.status === "pending") || [];
+  const inProgressItems = filteredItems.filter(item => item.status === "in_progress") || [];
+  const approvedItems = filteredItems.filter(item => item.status === "approved") || [];
+  const rejectedItems = filteredItems.filter(item => item.status === "rejected") || [];
+
+  // Loading state
+  const isLoading = approvalsLoading || tasksLoading || documentsLoading;
+  const isError = false; // We'll handle errors differently
 
   // Get unique departments for filter options
-  const departments = allApprovals 
-    ? [...new Set(allApprovals
-        .filter(approval => approval.entityType === "document" || approval.entityType === "policy")
-        .map(approval => approval.entityData?.department)
+  const departments = allItems
+    ? [...new Set(allItems
+        .filter(item => item.type === "document" || item.type === "policy")
+        .map(item => item.department)
         .filter(Boolean))]
     : [];
 
@@ -121,13 +225,13 @@ export default function ApprovalsPage() {
 
   return (
     <MainLayout 
-      pendingApprovalCount={pendingApprovals.length || 0}
-      pendingTaskCount={tasks?.length || 0}
+      pendingApprovalCount={pendingItems.length || 0}
+      pendingTaskCount={sidebarTasks?.length || 0}
     >
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Aprobaciones</h1>
+        <h1 className="text-2xl font-bold">Aprobaciones y Seguimiento</h1>
         <p className="text-muted-foreground mt-1">
-          Gestiona las solicitudes de aprobación de documentos
+          Gestiona y visualiza todas las tareas, documentos y políticas en sus diferentes estados
         </p>
       </div>
 
@@ -169,6 +273,7 @@ export default function ApprovalsPage() {
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="pending">Pendiente</SelectItem>
+                  <SelectItem value="in_progress">En Progreso</SelectItem>
                   <SelectItem value="approved">Aprobado</SelectItem>
                   <SelectItem value="rejected">Rechazado</SelectItem>
                 </SelectContent>
@@ -196,15 +301,19 @@ export default function ApprovalsPage() {
         <TabsList>
           <TabsTrigger value="pending" className="flex items-center">
             <Clock className="mr-2 h-4 w-4" />
-            Pendientes ({pendingApprovals.length})
+            Pendientes ({pendingItems.length})
+          </TabsTrigger>
+          <TabsTrigger value="in_progress" className="flex items-center">
+            <RotateCw className="mr-2 h-4 w-4" />
+            En Progreso ({inProgressItems.length})
           </TabsTrigger>
           <TabsTrigger value="approved" className="flex items-center">
             <CheckCircle className="mr-2 h-4 w-4" />
-            Aprobados ({approvedApprovals.length})
+            Aprobados ({approvedItems.length})
           </TabsTrigger>
           <TabsTrigger value="rejected" className="flex items-center">
             <XCircle className="mr-2 h-4 w-4" />
-            Rechazados ({rejectedApprovals.length})
+            Rechazados ({rejectedItems.length})
           </TabsTrigger>
         </TabsList>
 
@@ -215,14 +324,23 @@ export default function ApprovalsPage() {
             </div>
           ) : isError ? (
             <div className="text-center py-12 text-destructive">
-              Error al cargar aprobaciones. Intente de nuevo.
+              Error al cargar elementos. Intente de nuevo.
             </div>
-          ) : pendingApprovals.length > 0 ? (
+          ) : pendingItems.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {pendingApprovals.map((approval) => (
+              {pendingItems.map((item) => (
                 <ApprovalItem 
-                  key={approval.id} 
-                  approval={approval}
+                  key={`${item.type}-${item.id}`} 
+                  approval={{
+                    id: item.id,
+                    status: item.status,
+                    entityType: item.entityType || item.type,
+                    entityId: item.entityId || item.id,
+                    entityData: item.entityData || item,
+                    createdAt: item.createdAt,
+                    createdBy: item.createdBy || 0,
+                    updatedAt: item.createdAt
+                  }}
                   onViewEntity={handleViewEntity}
                 />
               ))}
@@ -230,8 +348,45 @@ export default function ApprovalsPage() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">No hay aprobaciones pendientes</h3>
-              <p>No tienes documentos pendientes de aprobación en este momento.</p>
+              <h3 className="text-lg font-medium mb-2">No hay elementos pendientes</h3>
+              <p>No hay tareas, documentos o políticas pendientes que coincidan con los filtros actuales.</p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="in_progress" className="mt-6">
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : isError ? (
+            <div className="text-center py-12 text-destructive">
+              Error al cargar elementos. Intente de nuevo.
+            </div>
+          ) : inProgressItems.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {inProgressItems.map((item) => (
+                <ApprovalItem 
+                  key={`${item.type}-${item.id}`} 
+                  approval={{
+                    id: item.id,
+                    status: item.status,
+                    entityType: item.entityType || item.type,
+                    entityId: item.entityId || item.id,
+                    entityData: item.entityData || item,
+                    createdAt: item.createdAt,
+                    createdBy: item.createdBy || 0,
+                    updatedAt: item.createdAt
+                  }}
+                  onViewEntity={handleViewEntity}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <RotateCw className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2">No hay elementos en progreso</h3>
+              <p>No hay tareas, documentos o políticas en progreso que coincidan con los filtros actuales.</p>
             </div>
           )}
         </TabsContent>
@@ -241,12 +396,21 @@ export default function ApprovalsPage() {
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : approvedApprovals.length > 0 ? (
+          ) : approvedItems.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {approvedApprovals.map((approval) => (
+              {approvedItems.map((item) => (
                 <ApprovalItem 
-                  key={approval.id} 
-                  approval={approval}
+                  key={`${item.type}-${item.id}`} 
+                  approval={{
+                    id: item.id,
+                    status: item.status,
+                    entityType: item.entityType || item.type,
+                    entityId: item.entityId || item.id,
+                    entityData: item.entityData || item,
+                    createdAt: item.createdAt,
+                    createdBy: item.createdBy || 0,
+                    updatedAt: item.createdAt
+                  }}
                   onViewEntity={handleViewEntity}
                 />
               ))}
@@ -254,8 +418,8 @@ export default function ApprovalsPage() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <CheckCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">No hay aprobaciones aprobadas</h3>
-              <p>No hay documentos aprobados que coincidan con los filtros actuales.</p>
+              <h3 className="text-lg font-medium mb-2">No hay elementos aprobados</h3>
+              <p>No hay tareas, documentos o políticas aprobados que coincidan con los filtros actuales.</p>
             </div>
           )}
         </TabsContent>
@@ -265,12 +429,21 @@ export default function ApprovalsPage() {
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : rejectedApprovals.length > 0 ? (
+          ) : rejectedItems.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {rejectedApprovals.map((approval) => (
+              {rejectedItems.map((item) => (
                 <ApprovalItem 
-                  key={approval.id} 
-                  approval={approval}
+                  key={`${item.type}-${item.id}`} 
+                  approval={{
+                    id: item.id,
+                    status: item.status,
+                    entityType: item.entityType || item.type,
+                    entityId: item.entityId || item.id,
+                    entityData: item.entityData || item,
+                    createdAt: item.createdAt,
+                    createdBy: item.createdBy || 0,
+                    updatedAt: item.createdAt
+                  }}
                   onViewEntity={handleViewEntity}
                 />
               ))}
@@ -278,8 +451,8 @@ export default function ApprovalsPage() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <XCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">No hay aprobaciones rechazadas</h3>
-              <p>No hay documentos rechazados que coincidan con los filtros actuales.</p>
+              <h3 className="text-lg font-medium mb-2">No hay elementos rechazados</h3>
+              <p>No hay tareas, documentos o políticas rechazados que coincidan con los filtros actuales.</p>
             </div>
           )}
         </TabsContent>

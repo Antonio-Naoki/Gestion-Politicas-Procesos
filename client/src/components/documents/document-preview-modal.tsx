@@ -36,11 +36,13 @@ export function DocumentPreviewModal({ open, onClose, document }: DocumentPrevie
 
   if (!document) return null;
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | null | undefined) => {
+    if (!date) return "Fecha no disponible";
     return new Date(date).toLocaleDateString();
   };
 
-  const formatDateTime = (date: Date) => {
+  const formatDateTime = (date: Date | null | undefined) => {
+    if (!date) return "Fecha no disponible";
     return `${new Date(date).toLocaleDateString()} - ${new Date(date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
   };
 
@@ -119,9 +121,9 @@ export function DocumentPreviewModal({ open, onClose, document }: DocumentPrevie
               )}
 
               <div className="space-y-4 text-sm text-neutral-800">
-                {document.content.split('\n').map((paragraph, index) => (
+                {document.content ? document.content.split('\n').map((paragraph, index) => (
                   <p key={index}>{paragraph}</p>
-                ))}
+                )) : <p>No hay contenido disponible</p>}
               </div>
             </div>
 
@@ -158,7 +160,7 @@ export function DocumentPreviewModal({ open, onClose, document }: DocumentPrevie
                               approval.user.role === "coordinator" ? "Coordinador" :
                               approval.user.role === "admin" ? "Administrador" :
                               approval.user.role
-                            }${approval.user.department ? ` de ${approval.user.department}` : ""})`}
+                            }${approval.user?.department ? ` de ${approval.user.department}` : ""})`}
                           </div>
                           <div className="mt-1 text-xs text-neutral-500">
                             {approval.approvedAt ? formatDateTime(approval.approvedAt) : formatDateTime(approval.createdAt)}

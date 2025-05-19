@@ -1,10 +1,3 @@
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardFooter
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -15,7 +8,8 @@ import {
   XCircle, 
   FileText, 
   Clock,
-  AlertCircle
+  AlertCircle,
+  Info
 } from "lucide-react";
 import { useState } from "react";
 import { Approval, Document, User } from "@shared/schema";
@@ -41,8 +35,8 @@ export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const formattedDate = new Date(approval.createdAt).toLocaleDateString();
-  const formattedTime = new Date(approval.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formattedDate = approval.createdAt ? new Date(approval.createdAt).toLocaleDateString() : "Fecha no disponible";
+  const formattedTime = approval.createdAt ? new Date(approval.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Hora no disponible";
 
   const handleApprove = async () => {
     try {
@@ -134,134 +128,101 @@ export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
 
   return (
     <>
-      <Card className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center">
-              {approval.entityType === "document" || approval.entityType === "policy" ? (
-                <FileText className="h-5 w-5 text-primary mr-2" />
-              ) : (
-                <Clock className="h-5 w-5 text-primary mr-2" />
-              )}
-              <CardTitle className="text-base">
-                {approval.entityData?.title || "Sin título"}
-              </CardTitle>
-            </div>
-            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-              approval.status === "approved" ? "bg-success text-white" :
-              approval.status === "rejected" ? "bg-destructive text-white" :
-              "bg-warning text-white"
-            }`}>
-              {approval.status === "approved" ? "Aprobado" :
-               approval.status === "rejected" ? "Rechazado" :
-               "Pendiente"}
-            </span>
-          </div>
-          <div className="text-xs text-neutral-500 mt-1">
-            {approval.entityType === "document" && (
-              <>
-                {approval.entityData?.category === "process" ? "Proceso Operativo" :
-                 approval.entityData?.category === "policy" ? "Política" :
-                 approval.entityData?.category === "instruction" ? "Instructivo" :
-                 approval.entityData?.category === "procedure" ? "Procedimiento" :
-                 approval.entityData?.category === "manual" ? "Manual" :
-                 "Documento"} - {approval.entityData?.department}
-              </>
-            )}
-            {approval.entityType === "task" && (
-              <>
-                Tarea - Prioridad: {approval.entityData?.priority === "urgent" ? "Urgente" :
-                                   approval.entityData?.priority === "high" ? "Alta" :
-                                   approval.entityData?.priority === "medium" ? "Media" :
-                                   "Baja"}
-              </>
-            )}
-            {approval.entityType === "policy" && (
-              <>
-                Política - {approval.entityData?.department}
-              </>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="pb-2">
-          <div className="grid grid-cols-2 text-sm">
-            <div>
-              <p className="text-neutral-500">Solicitante:</p>
-              <p className="font-medium">{approval.entityCreator?.name || "Usuario"}</p>
-              <p className="text-xs text-neutral-500">
-                {approval.entityCreator?.role === "analyst" ? "Analista" :
-                 approval.entityCreator?.role === "operator" ? "Operador" :
-                 approval.entityCreator?.role === "manager" ? "Manager" :
-                 approval.entityCreator?.role === "coordinator" ? "Coordinador" :
-                 "Usuario"} de {approval.entityCreator?.department || ""}
-              </p>
-            </div>
-            <div>
-              <p className="text-neutral-500">Fecha de solicitud:</p>
-              <p className="font-medium">{formattedDate}</p>
-              <p className="text-xs text-neutral-500">{formattedTime}</p>
-            </div>
-          </div>
+      <div className="p-4 border border-neutral-200 rounded-lg hover:shadow-sm transition-shadow">
+        <div className="flex justify-between">
+          <h3 className="text-sm font-medium text-neutral-900">{approval.entityData?.title || "Sin título"}</h3>
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+            approval.status === "approved" ? "bg-success text-white" :
+            approval.status === "rejected" ? "bg-destructive text-white" :
+            "bg-warning text-white"
+          }`}>
+            {approval.status === "approved" ? "Aprobado" :
+             approval.status === "rejected" ? "Rechazado" :
+             "Pendiente"}
+          </span>
+        </div>
 
-          {approval.status !== "pending" && approval.comments && (
-            <div className="mt-3 p-3 bg-neutral-50 rounded-md text-sm">
-              <p className="text-neutral-500 mb-1">Comentarios:</p>
-              <p className="text-neutral-700">{approval.comments}</p>
-            </div>
+        <p className="mt-1 text-xs text-neutral-500">
+          {approval.entityType === "document" && (
+            <>
+              {approval.entityData?.category === "process" ? "Proceso Operativo" :
+               approval.entityData?.category === "policy" ? "Política" :
+               approval.entityData?.category === "instruction" ? "Instructivo" :
+               approval.entityData?.category === "procedure" ? "Procedimiento" :
+               approval.entityData?.category === "manual" ? "Manual" :
+               "Documento"} - {approval.entityData?.department}
+            </>
           )}
-        </CardContent>
-        <CardFooter className="pt-2">
+          {approval.entityType === "task" && (
+            <>
+              Tarea - Prioridad: {approval.entityData?.priority === "urgent" ? "Urgente" :
+                                 approval.entityData?.priority === "high" ? "Alta" :
+                                 approval.entityData?.priority === "medium" ? "Media" :
+                                 "Baja"}
+            </>
+          )}
+          {approval.entityType === "policy" && (
+            <>
+              Política - {approval.entityData?.department}
+            </>
+          )}
+        </p>
+
+        <div className="mt-3 flex justify-between items-center text-xs">
+          <span className="text-neutral-500 flex items-center">
+            <Clock className="h-3 w-3 mr-1" />
+            Solicitado: {formattedDate}
+          </span>
+
           {approval.status === "pending" && canApprove ? (
-            <div className="flex justify-end w-full space-x-2">
+            <div className="flex space-x-1">
               <Button
                 variant="ghost"
-                size="sm"
-                className="text-neutral-500"
+                size="icon"
+                className="h-6 w-6"
                 onClick={() => onViewEntity(approval.entityData, approval.entityType)}
+                title="Ver detalles"
               >
-                <Eye className="h-4 w-4 mr-1" />
-                Ver
+                <Info className="h-3.5 w-3.5 text-primary" />
               </Button>
               <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive border-destructive hover:bg-destructive/10"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
                 onClick={() => setIsRejectDialogOpen(true)}
+                title="Rechazar"
               >
-                <XCircle className="h-4 w-4 mr-1" />
-                Rechazar
+                <XCircle className="h-3.5 w-3.5 text-destructive" />
               </Button>
               <Button
-                variant="outline"
-                size="sm"
-                className="text-success border-success hover:bg-success/10"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
                 onClick={() => setIsApproveDialogOpen(true)}
+                title="Aprobar"
               >
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Aprobar
+                <CheckCircle className="h-3.5 w-3.5 text-success" />
               </Button>
             </div>
           ) : (
-            <div className="flex justify-end w-full">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-neutral-500"
-                onClick={() => onViewEntity(approval.entityData, approval.entityType)}
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                Ver detalles
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => onViewEntity(approval.entityData, approval.entityType)}
+              title="Ver detalles"
+            >
+              <Info className="h-3.5 w-3.5 text-primary" />
+            </Button>
           )}
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
 
       {/* Approve Dialog */}
       <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Aprobar Documento</DialogTitle>
+            <DialogTitle>Aprobar {approval.entityType === "document" ? "Documento" : approval.entityType === "task" ? "Tarea" : "Política"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -311,7 +272,7 @@ export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Rechazar Documento</DialogTitle>
+            <DialogTitle>Rechazar {approval.entityType === "document" ? "Documento" : approval.entityType === "task" ? "Tarea" : "Política"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="flex items-center space-x-2 text-warning">

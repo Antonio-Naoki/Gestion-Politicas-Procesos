@@ -39,14 +39,15 @@ export function DocumentCard({ document, onView, showSubmitButton, onSubmit }: D
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | null | undefined) => {
+    if (!date) return "Fecha no disponible";
     return new Date(date).toLocaleDateString();
   };
 
   // Function to get placeholder image based on document type
   const getDocumentImage = (document: Document) => {
     if (document.category === "process") {
-      return "https://images.unsplash.com/photo-1544731612-de7f96afe55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&h=300";
+      return "https://cdn.pixabay.com/photo/2020/03/19/21/25/flow-chart-4948176_1280.jpg";
     } else if (document.category === "policy") {
       return "https://cdn.pixabay.com/photo/2018/01/17/20/22/analytics-3088958_1280.jpg";
     } else if (document.category === "quality") {
