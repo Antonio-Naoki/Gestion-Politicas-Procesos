@@ -58,7 +58,7 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [showNewTaskDialog, setShowNewTaskDialog] = useState(false);
-  
+
   // New task form state
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
@@ -66,26 +66,26 @@ export default function TasksPage() {
   const [taskPriority, setTaskPriority] = useState("medium");
   const [taskDueDate, setTaskDueDate] = useState<Date | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   // Get pending approvals count for the badge in the sidebar
   const { data: approvals } = useQuery({
     queryKey: ["/api/approvals"],
     select: (data) => data.filter(approval => approval.status === "pending")
   });
-  
+
   // Get all tasks with related users
   const { data: allTasks, isLoading, isError } = useQuery<ExtendedTask[]>({
     queryKey: ["/api/tasks"]
   });
-  
+
   // Get all users for assignee selection
   const { data: users } = useQuery<User[]>({
     queryKey: ["/api/users"]
   });
-  
+
   // Create task mutation
   const createTaskMutation = useMutation({
     mutationFn: async (newTask: any) => {
@@ -109,7 +109,7 @@ export default function TasksPage() {
       });
     },
   });
-  
+
   // Filter tasks based on search and filters
   const filteredTasks = allTasks?.filter(task => {
     // Search query filter
@@ -117,22 +117,22 @@ export default function TasksPage() {
       ? task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (task.description || "").toLowerCase().includes(searchQuery.toLowerCase())
       : true;
-    
+
     // Status filter
     const matchesStatus = statusFilter === "all" ? true : task.status === statusFilter;
-    
+
     // Priority filter
     const matchesPriority = priorityFilter === "all" ? true : task.priority === priorityFilter;
-    
+
     return matchesSearch && matchesStatus && matchesPriority;
   });
-  
+
   // Separate tasks by status
   const pendingTasks = filteredTasks?.filter(task => task.status === "pending") || [];
   const inProgressTasks = filteredTasks?.filter(task => task.status === "in_progress") || [];
   const completedTasks = filteredTasks?.filter(task => task.status === "completed") || [];
   const canceledTasks = filteredTasks?.filter(task => task.status === "canceled") || [];
-  
+
   const handleCreateTask = async () => {
     if (!taskTitle) {
       toast({
@@ -142,7 +142,7 @@ export default function TasksPage() {
       });
       return;
     }
-    
+
     if (!taskAssignee) {
       toast({
         title: "Asignación requerida",
@@ -151,9 +151,9 @@ export default function TasksPage() {
       });
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     const newTask = {
       title: taskTitle,
       description: taskDescription,
@@ -161,16 +161,16 @@ export default function TasksPage() {
       assignedBy: user?.id,
       priority: taskPriority,
       status: "pending",
-      dueDate: taskDueDate,
+      dueDate: taskDueDate ? taskDueDate.toISOString() : null,
     };
-    
+
     try {
       await createTaskMutation.mutateAsync(newTask);
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   const resetTaskForm = () => {
     setTaskTitle("");
     setTaskDescription("");
@@ -178,7 +178,7 @@ export default function TasksPage() {
     setTaskPriority("medium");
     setTaskDueDate(null);
   };
-  
+
   return (
     <MainLayout 
       pendingApprovalCount={approvals?.length || 0}
@@ -196,7 +196,7 @@ export default function TasksPage() {
           Nueva Tarea
         </Button>
       </div>
-      
+
       <Card className="mb-6">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Filtros</CardTitle>
@@ -228,7 +228,7 @@ export default function TasksPage() {
                   <SelectItem value="canceled">Cancelada</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Prioridad" />
@@ -245,7 +245,7 @@ export default function TasksPage() {
           </div>
         </CardContent>
       </Card>
-      
+
       <Tabs defaultValue="pending" className="mb-6">
         <TabsList>
           <TabsTrigger value="pending" className="flex items-center">
@@ -265,7 +265,7 @@ export default function TasksPage() {
             Canceladas ({canceledTasks.length})
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="pending" className="mt-6">
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
@@ -297,7 +297,7 @@ export default function TasksPage() {
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="in_progress" className="mt-6">
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
@@ -317,7 +317,7 @@ export default function TasksPage() {
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="completed" className="mt-6">
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
@@ -337,7 +337,7 @@ export default function TasksPage() {
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="canceled" className="mt-6">
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
@@ -358,14 +358,14 @@ export default function TasksPage() {
           )}
         </TabsContent>
       </Tabs>
-      
+
       {/* New Task Dialog */}
       <Dialog open={showNewTaskDialog} onOpenChange={setShowNewTaskDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Crear Nueva Tarea</DialogTitle>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="task-title">
@@ -382,7 +382,7 @@ export default function TasksPage() {
                 <p className="text-xs text-destructive mt-1">El título es requerido</p>
               )}
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="task-description">Descripción</Label>
               <Textarea
@@ -393,7 +393,7 @@ export default function TasksPage() {
                 rows={3}
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="task-assignee">
                 Asignar a <span className="text-destructive">*</span>
@@ -428,7 +428,7 @@ export default function TasksPage() {
                 <p className="text-xs text-destructive mt-1">Debe seleccionar un usuario</p>
               )}
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="task-priority">Prioridad</Label>
@@ -447,7 +447,7 @@ export default function TasksPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="task-due-date">Fecha límite</Label>
                 <Popover>
@@ -480,7 +480,7 @@ export default function TasksPage() {
               </div>
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button 
               variant="outline" 

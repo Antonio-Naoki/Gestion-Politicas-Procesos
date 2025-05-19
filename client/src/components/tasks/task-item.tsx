@@ -44,25 +44,25 @@ export function TaskItem({ task }: TaskItemProps) {
   const [statusValue, setStatusValue] = useState<string>(task.status);
   const [statusComment, setStatusComment] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const { toast } = useToast();
   const { user } = useAuth();
-  
+
   const canUpdateTask = user?.id === task.assignedTo || 
                         ["admin", "manager", "coordinator"].includes(user?.role || "");
-  
+
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
       case "urgent":
-        return "bg-destructive bg-opacity-10 text-destructive";
+        return "bg-destructive text-white";
       case "high":
-        return "bg-error bg-opacity-10 text-error";
+        return "bg-error text-white";
       case "medium":
-        return "bg-warning bg-opacity-10 text-warning";
+        return "bg-warning text-white";
       case "low":
-        return "bg-info bg-opacity-10 text-info";
+        return "bg-info text-white";
       default:
-        return "bg-info bg-opacity-10 text-info";
+        return "bg-info text-white";
     }
   };
 
@@ -80,18 +80,18 @@ export function TaskItem({ task }: TaskItemProps) {
         return "Normal";
     }
   };
-  
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-success bg-opacity-10 text-success";
+        return "bg-success text-white";
       case "in_progress":
-        return "bg-primary bg-opacity-10 text-primary";
+        return "bg-primary text-white";
       case "canceled":
-        return "bg-destructive bg-opacity-10 text-destructive";
+        return "bg-destructive text-white";
       case "pending":
       default:
-        return "bg-warning bg-opacity-10 text-warning";
+        return "bg-warning text-white";
     }
   };
 
@@ -113,12 +113,12 @@ export function TaskItem({ task }: TaskItemProps) {
     if (!date) return "No especificada";
     return new Date(date).toLocaleDateString();
   };
-  
+
   const formatDateTime = (date: Date | null) => {
     if (!date) return "";
     return `${new Date(date).toLocaleDateString()} ${new Date(date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
   };
-  
+
   const handleUpdateStatus = async () => {
     try {
       setIsProcessing(true);
@@ -126,14 +126,14 @@ export function TaskItem({ task }: TaskItemProps) {
         status: statusValue,
         comments: statusComment
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      
+
       toast({
         title: "Estado actualizado",
         description: `La tarea ha sido marcada como "${getStatusText(statusValue)}"`,
       });
-      
+
       setIsStatusDialogOpen(false);
       setStatusComment("");
     } catch (error) {
@@ -146,7 +146,7 @@ export function TaskItem({ task }: TaskItemProps) {
       setIsProcessing(false);
     }
   };
-  
+
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "completed";
 
   return (
@@ -169,7 +169,7 @@ export function TaskItem({ task }: TaskItemProps) {
           {task.description && (
             <p className="text-neutral-700 mb-3">{task.description}</p>
           )}
-          
+
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="flex items-center">
               <Calendar className="h-3.5 w-3.5 text-neutral-500 mr-1" />
@@ -179,7 +179,7 @@ export function TaskItem({ task }: TaskItemProps) {
               <User className="h-3.5 w-3.5 text-neutral-500 mr-1" />
               <span>Asignado por: {task.assignedByUser?.name || "Usuario"}</span>
             </div>
-            
+
             {task.documentTitle && (
               <div className="flex items-center col-span-2">
                 <Info className="h-3.5 w-3.5 text-neutral-500 mr-1" />
@@ -187,7 +187,7 @@ export function TaskItem({ task }: TaskItemProps) {
               </div>
             )}
           </div>
-          
+
           {isOverdue && (
             <div className="mt-3 p-2 bg-destructive/10 rounded-md text-xs text-destructive flex items-center">
               <Clock className="h-3.5 w-3.5 mr-1" />
@@ -206,7 +206,7 @@ export function TaskItem({ task }: TaskItemProps) {
               <Info className="h-4 w-4 mr-1" />
               Detalles
             </Button>
-            
+
             {canUpdateTask && task.status !== "completed" && task.status !== "canceled" && (
               <>
                 <Button
@@ -257,14 +257,14 @@ export function TaskItem({ task }: TaskItemProps) {
                 </span>
               </div>
             </div>
-            
+
             {task.description && (
               <div className="mt-2">
                 <Label className="text-neutral-500">Descripción:</Label>
                 <p className="mt-1 text-neutral-700">{task.description}</p>
               </div>
             )}
-            
+
             <div className="grid grid-cols-2 gap-4 mt-2">
               <div>
                 <Label className="text-neutral-500">Asignado a:</Label>
@@ -289,7 +289,7 @@ export function TaskItem({ task }: TaskItemProps) {
                 </div>
               )}
             </div>
-            
+
             {task.documentTitle && (
               <div className="mt-2">
                 <Label className="text-neutral-500">Documento relacionado:</Label>

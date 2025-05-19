@@ -319,10 +319,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks", isAuthenticated, async (req, res) => {
     try {
-      const validatedData = insertTaskSchema.parse({
+      // Convert dueDate from ISO string to Date object if it exists
+      const requestData = {
         ...req.body,
         assignedBy: req.user.id
-      });
+      };
+
+      if (requestData.dueDate && typeof requestData.dueDate === 'string') {
+        requestData.dueDate = new Date(requestData.dueDate);
+      }
+
+      const validatedData = insertTaskSchema.parse(requestData);
 
       const task = await storage.createTask(validatedData);
 
