@@ -41,10 +41,15 @@ export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
   const handleApprove = async () => {
     try {
       setIsProcessing(true);
-      await apiRequest("POST", `/api/approvals/${approval.id}`, {
+      console.log(`Sending approval request for approval ID: ${approval.id}`);
+      console.log(`Approval data:`, { status: "approved", comments: approvalComment });
+
+      const response = await apiRequest("POST", `/api/approvals/${approval.id}`, {
         status: "approved",
         comments: approvalComment
       });
+
+      console.log(`Approval response:`, response);
 
       queryClient.invalidateQueries({ queryKey: ["/api/approvals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
@@ -61,12 +66,20 @@ export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
       setIsApproveDialogOpen(false);
       setApprovalComment("");
     } catch (error) {
+      console.error(`Error approving approval ID: ${approval.id}`, error);
+
       const entityTypeText = approval.entityType === "document" ? "documento" : 
                             approval.entityType === "task" ? "tarea" : "política";
 
+      let errorMessage = `Ha ocurrido un error al aprobar el ${entityTypeText}`;
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error(`Error details: ${error.stack || 'No stack trace available'}`);
+      }
+
       toast({
         title: "Error al aprobar",
-        description: error instanceof Error ? error.message : `Ha ocurrido un error al aprobar el ${entityTypeText}`,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -86,10 +99,15 @@ export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
 
     try {
       setIsProcessing(true);
-      await apiRequest("POST", `/api/approvals/${approval.id}`, {
+      console.log(`Sending rejection request for approval ID: ${approval.id}`);
+      console.log(`Rejection data:`, { status: "rejected", comments: rejectionComment });
+
+      const response = await apiRequest("POST", `/api/approvals/${approval.id}`, {
         status: "rejected",
         comments: rejectionComment
       });
+
+      console.log(`Rejection response:`, response);
 
       queryClient.invalidateQueries({ queryKey: ["/api/approvals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
@@ -106,12 +124,20 @@ export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
       setIsRejectDialogOpen(false);
       setRejectionComment("");
     } catch (error) {
+      console.error(`Error rejecting approval ID: ${approval.id}`, error);
+
       const entityTypeText = approval.entityType === "document" ? "documento" : 
                             approval.entityType === "task" ? "tarea" : "política";
 
+      let errorMessage = `Ha ocurrido un error al rechazar el ${entityTypeText}`;
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error(`Error details: ${error.stack || 'No stack trace available'}`);
+      }
+
       toast({
         title: "Error al rechazar",
-        description: error instanceof Error ? error.message : `Ha ocurrido un error al rechazar el ${entityTypeText}`,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

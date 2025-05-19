@@ -198,29 +198,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Fetch related data for each approval
+      // Fetch related data for each approval with individual error handling
       const enhancedApprovals = await Promise.all(approvals.map(async (approval) => {
-        let entityData = null;
+        try {
+          let entityData = null;
 
-        if (approval.entityType === "document" && approval.documentId) {
-          entityData = await storage.getDocument(approval.documentId);
-        } else if (approval.entityType === "task" && approval.taskId) {
-          entityData = await storage.getTask(approval.taskId);
-        } else if (approval.entityType === "policy" && approval.policyId) {
-          const policy = await storage.getDocument(approval.policyId);
-          if (policy && policy.category === "policy") {
-            entityData = policy;
+          if (approval.entityType === "document" && approval.documentId) {
+            entityData = await storage.getDocument(approval.documentId);
+          } else if (approval.entityType === "task" && approval.taskId) {
+            entityData = await storage.getTask(approval.taskId);
+          } else if (approval.entityType === "policy" && approval.policyId) {
+            const policy = await storage.getDocument(approval.policyId);
+            if (policy && policy.category === "policy") {
+              entityData = policy;
+            }
           }
-        }
 
-        return {
-          ...approval,
-          entityData
-        };
+          return {
+            ...approval,
+            entityData
+          };
+        } catch (err) {
+          console.error(`Error fetching data for approval ${approval.id}:`, err);
+          // Return the approval without entity data if there's an error
+          return {
+            ...approval,
+            entityData: null
+          };
+        }
       }));
 
       res.json(enhancedApprovals);
     } catch (error) {
+      console.error("Error in GET /api/approvals:", error);
       res.status(500).json({ message: "Failed to fetch approvals" });
     }
   });
@@ -378,109 +388,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update approval
-      const updatedApproval = await storage.updateApproval(approvalId, {
-        ...approval,
-        status,
-        comments,
-        approvedAt: new Date()
-      });
+      try {
+        console.log(`Processing approval ID: ${approvalId}, status: ${status}`);
 
-      let entityTitle = "";
-      let activityDetails = { comments };
+        const updatedApproval = await storage.updateApproval(approvalId, {
+          ...approval,
+          status,
+          comments,
+          approvedAt: new Date()
+        });
 
-      // Handle different entity types
-      if (approval.entityType === "document" && approval.documentId) {
-        const document = await storage.getDocument(approval.documentId);
+        console.log(`Successfully updated approval ID: ${approvalId}`);
 
-        if (document) {
-          entityTitle = document.title;
-          activityDetails = { ...activityDetails, documentTitle: document.title };
+        let entityTitle = "";
+        let activityDetails = { comments };
 
-          // Update document status if all approvals are done
-          if (status === "approved") {
-            const allApprovals = await storage.getApprovalsByDocumentId(approval.documentId);
-            const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+        // Handle different entity types
+        try {
+          if (approval.entityType === "document" && approval.documentId) {
+            const document = await storage.getDocument(approval.documentId);
 
-            if (allApproved) {
-              await storage.updateDocument(approval.documentId, {
-                ...document,
-                status: "approved"
-              });
+            if (document) {
+              entityTitle = document.title;
+              activityDetails = { ...activityDetails, documentTitle: document.title };
+
+              console.log(`Processing document ID: ${approval.documentId}, title: ${document.title}`);
+
+              // Update document status if all approvals are done
+              if (status === "approved") {
+                const allApprovals = await storage.getApprovalsByDocumentId(approval.documentId);
+                const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+
+                if (allApproved) {
+                  await storage.updateDocument(approval.documentId, {
+                    ...document,
+                    status: "approved"
+                  });
+                  console.log(`Document ID: ${approval.documentId} marked as approved`);
+                }
+              } else if (status === "rejected") {
+                // If rejected, update document status
+                await storage.updateDocument(approval.documentId, {
+                  ...document,
+                  status: "rejected"
+                });
+                console.log(`Document ID: ${approval.documentId} marked as rejected`);
+              }
             }
-          } else if (status === "rejected") {
-            // If rejected, update document status
-            await storage.updateDocument(approval.documentId, {
-              ...document,
-              status: "rejected"
-            });
-          }
-        }
-      } else if (approval.entityType === "task" && approval.taskId) {
-        const task = await storage.getTask(approval.taskId);
+          } else if (approval.entityType === "task" && approval.taskId) {
+            const task = await storage.getTask(approval.taskId);
 
-        if (task) {
-          entityTitle = task.title;
-          activityDetails = { ...activityDetails, taskTitle: task.title };
+            if (task) {
+              entityTitle = task.title;
+              activityDetails = { ...activityDetails, taskTitle: task.title };
 
-          // Update task status based on approval
-          if (status === "approved") {
-            const allApprovals = await storage.getApprovalsByTaskId(approval.taskId);
-            const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+              console.log(`Processing task ID: ${approval.taskId}, title: ${task.title}`);
 
-            if (allApproved) {
-              await storage.updateTask(approval.taskId, {
-                ...task,
-                status: "completed"
-              });
+              // Update task status based on approval
+              if (status === "approved") {
+                const allApprovals = await storage.getApprovalsByTaskId(approval.taskId);
+                const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+
+                if (allApproved) {
+                  await storage.updateTask(approval.taskId, {
+                    ...task,
+                    status: "completed"
+                  });
+                  console.log(`Task ID: ${approval.taskId} marked as completed`);
+                }
+              } else if (status === "rejected") {
+                // If rejected, update task status
+                await storage.updateTask(approval.taskId, {
+                  ...task,
+                  status: "pending"
+                });
+                console.log(`Task ID: ${approval.taskId} marked as pending`);
+              }
             }
-          } else if (status === "rejected") {
-            // If rejected, update task status
-            await storage.updateTask(approval.taskId, {
-              ...task,
-              status: "pending"
-            });
-          }
-        }
-      } else if (approval.entityType === "policy" && approval.policyId) {
-        const policy = await storage.getDocument(approval.policyId);
+          } else if (approval.entityType === "policy" && approval.policyId) {
+            const policy = await storage.getDocument(approval.policyId);
 
-        if (policy) {
-          entityTitle = policy.title;
-          activityDetails = { ...activityDetails, policyTitle: policy.title };
+            if (policy) {
+              entityTitle = policy.title;
+              activityDetails = { ...activityDetails, policyTitle: policy.title };
 
-          // Update policy status if all approvals are done
-          if (status === "approved") {
-            const allApprovals = await storage.getApprovalsByPolicyId(approval.policyId);
-            const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+              console.log(`Processing policy ID: ${approval.policyId}, title: ${policy.title}`);
 
-            if (allApproved) {
-              await storage.updateDocument(approval.policyId, {
-                ...policy,
-                status: "approved"
-              });
+              // Update policy status if all approvals are done
+              if (status === "approved") {
+                const allApprovals = await storage.getApprovalsByPolicyId(approval.policyId);
+                const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+
+                if (allApproved) {
+                  await storage.updateDocument(approval.policyId, {
+                    ...policy,
+                    status: "approved"
+                  });
+                  console.log(`Policy ID: ${approval.policyId} marked as approved`);
+                }
+              } else if (status === "rejected") {
+                // If rejected, update policy status
+                await storage.updateDocument(approval.policyId, {
+                  ...policy,
+                  status: "rejected"
+                });
+                console.log(`Policy ID: ${approval.policyId} marked as rejected`);
+              }
             }
-          } else if (status === "rejected") {
-            // If rejected, update policy status
-            await storage.updateDocument(approval.policyId, {
-              ...policy,
-              status: "rejected"
-            });
+          } else {
+            console.log(`Unknown entity type: ${approval.entityType} for approval ID: ${approvalId}`);
           }
+        } catch (entityError) {
+          console.error(`Error updating entity for approval ${approvalId}:`, entityError);
+          // We'll continue even if entity update fails, as the approval itself was updated
         }
+
+        // Log activity
+        try {
+          await storage.createActivity({
+            userId: req.user.id,
+            action: status,
+            entityType: approval.entityType,
+            entityId: approvalId,
+            details: activityDetails
+          });
+          console.log(`Activity logged for approval ID: ${approvalId}`);
+        } catch (activityError) {
+          console.error(`Error logging activity for approval ${approvalId}:`, activityError);
+          // We'll continue even if activity logging fails
+        }
+
+        // Return success response even if secondary operations failed
+        return res.json(updatedApproval);
+      } catch (updateError) {
+        console.error(`Error updating approval ${approvalId}:`, updateError);
+        return res.status(500).json({ 
+          message: "Failed to update approval", 
+          error: updateError.message || "Unknown error" 
+        });
       }
-
-      // Log activity
-      await storage.createActivity({
-        userId: req.user.id,
-        action: status,
-        entityType: approval.entityType,
-        entityId: approvalId,
-        details: activityDetails
-      });
-
-      res.json(updatedApproval);
     } catch (error) {
-      res.status(500).json({ message: "Failed to process approval" });
+      console.error("Error in POST /api/approvals/:id:", error);
+      return res.status(500).json({ 
+        message: "Failed to process approval", 
+        error: error.message || "Unknown error" 
+      });
     }
   });
 
