@@ -1,14 +1,16 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, Download, User } from "lucide-react";
+import { Eye, Download, User, SendHorizonal } from "lucide-react";
 import { Document, User as UserType } from "@shared/schema";
 
 interface DocumentCardProps {
   document: Document & { createdByUser?: Partial<UserType> };
   onView: (document: Document) => void;
+  showSubmitButton?: boolean;
+  onSubmit?: () => void;
 }
 
-export function DocumentCard({ document, onView }: DocumentCardProps) {
+export function DocumentCard({ document, onView, showSubmitButton, onSubmit }: DocumentCardProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
@@ -96,6 +98,18 @@ export function DocumentCard({ document, onView }: DocumentCardProps) {
             </Button>
           </div>
         </div>
+
+        {showSubmitButton && onSubmit && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full mt-3 text-xs"
+            onClick={onSubmit}
+          >
+            <SendHorizonal className="h-3.5 w-3.5 mr-1" />
+            Enviar para aprobación
+          </Button>
+        )}
       </div>
     </Card>
   );

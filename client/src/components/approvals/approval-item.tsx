@@ -25,25 +25,25 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ApprovalItemProps {
   approval: Approval & { 
-    document: Document;
-    documentCreator?: Partial<User>;
+    entityData?: any;
+    entityCreator?: Partial<User>;
   };
-  onViewDocument: (document: Document) => void;
+  onViewEntity: (entity: any, entityType: string) => void;
 }
 
-export function ApprovalItem({ approval, onViewDocument }: ApprovalItemProps) {
+export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [approvalComment, setApprovalComment] = useState("");
   const [rejectionComment, setRejectionComment] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const { toast } = useToast();
   const { user } = useAuth();
-  
+
   const formattedDate = new Date(approval.createdAt).toLocaleDateString();
   const formattedTime = new Date(approval.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  
+
   const handleApprove = async () => {
     try {
       setIsProcessing(true);
@@ -51,28 +51,35 @@ export function ApprovalItem({ approval, onViewDocument }: ApprovalItemProps) {
         status: "approved",
         comments: approvalComment
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/approvals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
-      
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+
+      const entityTypeText = approval.entityType === "document" ? "Documento" : 
+                            approval.entityType === "task" ? "Tarea" : "Política";
+
       toast({
-        title: "Documento aprobado",
-        description: "El documento ha sido aprobado exitosamente.",
+        title: `${entityTypeText} aprobado`,
+        description: `El ${entityTypeText.toLowerCase()} ha sido aprobado exitosamente.`,
       });
-      
+
       setIsApproveDialogOpen(false);
       setApprovalComment("");
     } catch (error) {
+      const entityTypeText = approval.entityType === "document" ? "documento" : 
+                            approval.entityType === "task" ? "tarea" : "política";
+
       toast({
         title: "Error al aprobar",
-        description: error instanceof Error ? error.message : "Ha ocurrido un error al aprobar el documento",
+        description: error instanceof Error ? error.message : `Ha ocurrido un error al aprobar el ${entityTypeText}`,
         variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
     }
   };
-  
+
   const handleReject = async () => {
     if (!rejectionComment) {
       toast({
@@ -82,46 +89,63 @@ export function ApprovalItem({ approval, onViewDocument }: ApprovalItemProps) {
       });
       return;
     }
-    
+
     try {
       setIsProcessing(true);
       await apiRequest("POST", `/api/approvals/${approval.id}`, {
         status: "rejected",
         comments: rejectionComment
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/approvals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
-      
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+
+      const entityTypeText = approval.entityType === "document" ? "Documento" : 
+                            approval.entityType === "task" ? "Tarea" : "Política";
+
       toast({
-        title: "Documento rechazado",
-        description: "El documento ha sido rechazado.",
+        title: `${entityTypeText} rechazado`,
+        description: `El ${entityTypeText.toLowerCase()} ha sido rechazado.`,
       });
-      
+
       setIsRejectDialogOpen(false);
       setRejectionComment("");
     } catch (error) {
+      const entityTypeText = approval.entityType === "document" ? "documento" : 
+                            approval.entityType === "task" ? "tarea" : "política";
+
       toast({
         title: "Error al rechazar",
-        description: error instanceof Error ? error.message : "Ha ocurrido un error al rechazar el documento",
+        description: error instanceof Error ? error.message : `Ha ocurrido un error al rechazar el ${entityTypeText}`,
         variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
     }
   };
-  
-  // Determine if user can approve this document
-  const canApprove = ["admin", "manager", "coordinator"].includes(user?.role || "");
-  
+
+  // Determine if user can approve this document or policy
+  // Only managers and admins can approve policies, while coordinators can approve other types
+  const canApprove = 
+    approval.entityType === "policy" 
+      ? ["admin", "manager"].includes(user?.role || "") 
+      : ["admin", "manager", "coordinator"].includes(user?.role || "");
+
   return (
     <>
       <Card className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
             <div className="flex items-center">
-              <FileText className="h-5 w-5 text-primary mr-2" />
-              <CardTitle className="text-base">{approval.document.title}</CardTitle>
+              {approval.entityType === "document" || approval.entityType === "policy" ? (
+                <FileText className="h-5 w-5 text-primary mr-2" />
+              ) : (
+                <Clock className="h-5 w-5 text-primary mr-2" />
+              )}
+              <CardTitle className="text-base">
+                {approval.entityData?.title || "Sin título"}
+              </CardTitle>
             </div>
             <span className={`px-2 py-1 text-xs font-medium rounded-full ${
               approval.status === "approved" ? "bg-success text-white" :
@@ -134,25 +158,42 @@ export function ApprovalItem({ approval, onViewDocument }: ApprovalItemProps) {
             </span>
           </div>
           <div className="text-xs text-neutral-500 mt-1">
-            {approval.document.category === "process" ? "Proceso Operativo" :
-             approval.document.category === "policy" ? "Política" :
-             approval.document.category === "instruction" ? "Instructivo" :
-             approval.document.category === "procedure" ? "Procedimiento" :
-             approval.document.category === "manual" ? "Manual" :
-             "Documento"} - {approval.document.department}
+            {approval.entityType === "document" && (
+              <>
+                {approval.entityData?.category === "process" ? "Proceso Operativo" :
+                 approval.entityData?.category === "policy" ? "Política" :
+                 approval.entityData?.category === "instruction" ? "Instructivo" :
+                 approval.entityData?.category === "procedure" ? "Procedimiento" :
+                 approval.entityData?.category === "manual" ? "Manual" :
+                 "Documento"} - {approval.entityData?.department}
+              </>
+            )}
+            {approval.entityType === "task" && (
+              <>
+                Tarea - Prioridad: {approval.entityData?.priority === "urgent" ? "Urgente" :
+                                   approval.entityData?.priority === "high" ? "Alta" :
+                                   approval.entityData?.priority === "medium" ? "Media" :
+                                   "Baja"}
+              </>
+            )}
+            {approval.entityType === "policy" && (
+              <>
+                Política - {approval.entityData?.department}
+              </>
+            )}
           </div>
         </CardHeader>
         <CardContent className="pb-2">
           <div className="grid grid-cols-2 text-sm">
             <div>
               <p className="text-neutral-500">Solicitante:</p>
-              <p className="font-medium">{approval.documentCreator?.name || "Usuario"}</p>
+              <p className="font-medium">{approval.entityCreator?.name || "Usuario"}</p>
               <p className="text-xs text-neutral-500">
-                {approval.documentCreator?.role === "analyst" ? "Analista" :
-                 approval.documentCreator?.role === "operator" ? "Operador" :
-                 approval.documentCreator?.role === "manager" ? "Manager" :
-                 approval.documentCreator?.role === "coordinator" ? "Coordinador" :
-                 "Usuario"} de {approval.documentCreator?.department || ""}
+                {approval.entityCreator?.role === "analyst" ? "Analista" :
+                 approval.entityCreator?.role === "operator" ? "Operador" :
+                 approval.entityCreator?.role === "manager" ? "Manager" :
+                 approval.entityCreator?.role === "coordinator" ? "Coordinador" :
+                 "Usuario"} de {approval.entityCreator?.department || ""}
               </p>
             </div>
             <div>
@@ -161,7 +202,7 @@ export function ApprovalItem({ approval, onViewDocument }: ApprovalItemProps) {
               <p className="text-xs text-neutral-500">{formattedTime}</p>
             </div>
           </div>
-          
+
           {approval.status !== "pending" && approval.comments && (
             <div className="mt-3 p-3 bg-neutral-50 rounded-md text-sm">
               <p className="text-neutral-500 mb-1">Comentarios:</p>
@@ -176,7 +217,7 @@ export function ApprovalItem({ approval, onViewDocument }: ApprovalItemProps) {
                 variant="ghost"
                 size="sm"
                 className="text-neutral-500"
-                onClick={() => onViewDocument(approval.document)}
+                onClick={() => onViewEntity(approval.entityData, approval.entityType)}
               >
                 <Eye className="h-4 w-4 mr-1" />
                 Ver
@@ -206,7 +247,7 @@ export function ApprovalItem({ approval, onViewDocument }: ApprovalItemProps) {
                 variant="ghost"
                 size="sm"
                 className="text-neutral-500"
-                onClick={() => onViewDocument(approval.document)}
+                onClick={() => onViewEntity(approval.entityData, approval.entityType)}
               >
                 <Eye className="h-4 w-4 mr-1" />
                 Ver detalles

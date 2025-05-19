@@ -180,15 +180,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Approval routes
   app.get("/api/approvals", isAuthenticated, async (req, res) => {
     try {
+      let approvals = [];
+      const entityType = req.query.entityType as string;
+
       // For managers and coordinators - show all approvals they can manage
       if (["manager", "coordinator", "admin"].includes(req.user.role)) {
-        const approvals = await storage.getAllApprovals();
-        return res.json(approvals);
+        if (entityType) {
+          approvals = await storage.getApprovalsByEntityType(entityType);
+        } else {
+          approvals = await storage.getAllApprovals();
+        }
+      } else {
+        // For others - show only approvals for their documents/tasks/policies
+        approvals = await storage.getApprovalsByUser(req.user.id);
+        if (entityType) {
+          approvals = approvals.filter(approval => approval.entityType === entityType);
+        }
       }
 
-      // For others - show only approvals for their documents
-      const approvals = await storage.getApprovalsByUser(req.user.id);
-      res.json(approvals);
+      // Fetch related data for each approval
+      const enhancedApprovals = await Promise.all(approvals.map(async (approval) => {
+        let entityData = null;
+
+        if (approval.entityType === "document" && approval.documentId) {
+          entityData = await storage.getDocument(approval.documentId);
+        } else if (approval.entityType === "task" && approval.taskId) {
+          entityData = await storage.getTask(approval.taskId);
+        } else if (approval.entityType === "policy" && approval.policyId) {
+          const policy = await storage.getDocument(approval.policyId);
+          if (policy && policy.category === "policy") {
+            entityData = policy;
+          }
+        }
+
+        return {
+          ...approval,
+          entityData
+        };
+      }));
+
+      res.json(enhancedApprovals);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch approvals" });
     }
@@ -220,6 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const manager of managers) {
         await storage.createApproval({
           documentId,
+          entityType: "document",
           userId: manager.id,
           status: "pending"
         });
@@ -237,6 +269,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Document submitted for approval" });
     } catch (error) {
       res.status(500).json({ message: "Failed to submit document for approval" });
+    }
+  });
+
+  // Submit task for approval
+  app.post("/api/tasks/:id/submit", isAuthenticated, async (req, res) => {
+    try {
+      const taskId = Number(req.params.id);
+      const task = await storage.getTask(taskId);
+
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Check if user is the assignee or has appropriate role
+      if (task.assignedTo !== req.user.id && !["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Create approval request for managers/coordinators
+      const managers = await storage.getUsersByRole(["manager", "coordinator"]);
+
+      for (const manager of managers) {
+        await storage.createApproval({
+          taskId,
+          entityType: "task",
+          userId: manager.id,
+          status: "pending"
+        });
+      }
+
+      // Log activity
+      await storage.createActivity({
+        userId: req.user.id,
+        action: "submit",
+        entityType: "task",
+        entityId: taskId,
+        details: { title: task.title }
+      });
+
+      res.json({ message: "Task submitted for approval" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to submit task for approval" });
+    }
+  });
+
+  // Submit policy for approval
+  app.post("/api/policies/:id/submit", isAuthenticated, async (req, res) => {
+    try {
+      const policyId = Number(req.params.id);
+      const policy = await storage.getDocument(policyId);
+
+      if (!policy || policy.category !== "policy") {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      // Check if user is the creator
+      if (policy.createdBy !== req.user.id && !["admin", "manager"].includes(req.user.role)) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      // Update policy status
+      await storage.updateDocument(policyId, { 
+        ...policy,
+        status: "pending" 
+      });
+
+      // Create approval request for managers/coordinators
+      const managers = await storage.getUsersByRole(["manager", "coordinator"]);
+
+      for (const manager of managers) {
+        await storage.createApproval({
+          policyId,
+          entityType: "policy",
+          userId: manager.id,
+          status: "pending"
+        });
+      }
+
+      // Log activity
+      await storage.createActivity({
+        userId: req.user.id,
+        action: "submit",
+        entityType: "policy",
+        entityId: policyId,
+        details: { title: policy.title }
+      });
+
+      res.json({ message: "Policy submitted for approval" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to submit policy for approval" });
     }
   });
 
@@ -263,35 +385,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
         approvedAt: new Date()
       });
 
-      // Get document
-      const document = await storage.getDocument(approval.documentId);
+      let entityTitle = "";
+      let activityDetails = { comments };
 
-      // Update document status if all approvals are done
-      if (status === "approved") {
-        const allApprovals = await storage.getApprovalsByDocumentId(approval.documentId);
-        const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+      // Handle different entity types
+      if (approval.entityType === "document" && approval.documentId) {
+        const document = await storage.getDocument(approval.documentId);
 
-        if (allApproved) {
-          await storage.updateDocument(approval.documentId, {
-            ...document,
-            status: "approved"
-          });
+        if (document) {
+          entityTitle = document.title;
+          activityDetails = { ...activityDetails, documentTitle: document.title };
+
+          // Update document status if all approvals are done
+          if (status === "approved") {
+            const allApprovals = await storage.getApprovalsByDocumentId(approval.documentId);
+            const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+
+            if (allApproved) {
+              await storage.updateDocument(approval.documentId, {
+                ...document,
+                status: "approved"
+              });
+            }
+          } else if (status === "rejected") {
+            // If rejected, update document status
+            await storage.updateDocument(approval.documentId, {
+              ...document,
+              status: "rejected"
+            });
+          }
         }
-      } else if (status === "rejected") {
-        // If rejected, update document status
-        await storage.updateDocument(approval.documentId, {
-          ...document,
-          status: "rejected"
-        });
+      } else if (approval.entityType === "task" && approval.taskId) {
+        const task = await storage.getTask(approval.taskId);
+
+        if (task) {
+          entityTitle = task.title;
+          activityDetails = { ...activityDetails, taskTitle: task.title };
+
+          // Update task status based on approval
+          if (status === "approved") {
+            const allApprovals = await storage.getApprovalsByTaskId(approval.taskId);
+            const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+
+            if (allApproved) {
+              await storage.updateTask(approval.taskId, {
+                ...task,
+                status: "completed"
+              });
+            }
+          } else if (status === "rejected") {
+            // If rejected, update task status
+            await storage.updateTask(approval.taskId, {
+              ...task,
+              status: "pending"
+            });
+          }
+        }
+      } else if (approval.entityType === "policy" && approval.policyId) {
+        const policy = await storage.getDocument(approval.policyId);
+
+        if (policy) {
+          entityTitle = policy.title;
+          activityDetails = { ...activityDetails, policyTitle: policy.title };
+
+          // Update policy status if all approvals are done
+          if (status === "approved") {
+            const allApprovals = await storage.getApprovalsByPolicyId(approval.policyId);
+            const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+
+            if (allApproved) {
+              await storage.updateDocument(approval.policyId, {
+                ...policy,
+                status: "approved"
+              });
+            }
+          } else if (status === "rejected") {
+            // If rejected, update policy status
+            await storage.updateDocument(approval.policyId, {
+              ...policy,
+              status: "rejected"
+            });
+          }
+        }
       }
 
       // Log activity
       await storage.createActivity({
         userId: req.user.id,
         action: status,
-        entityType: "approval",
+        entityType: approval.entityType,
         entityId: approvalId,
-        details: { documentTitle: document.title, comments }
+        details: activityDetails
       });
 
       res.json(updatedApproval);

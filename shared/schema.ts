@@ -42,7 +42,10 @@ export type Document = typeof documents.$inferSelect;
 // Approval model
 export const approvals = pgTable("approvals", {
   id: serial("id").primaryKey(),
-  documentId: integer("document_id").notNull(),
+  documentId: integer("document_id"),
+  taskId: integer("task_id"),
+  policyId: integer("policy_id"),
+  entityType: text("entity_type", { enum: ["document", "task", "policy"] }).notNull(),
   userId: integer("user_id").notNull(),
   status: text("status", { enum: ["pending", "approved", "rejected"] }).notNull().default("pending"),
   comments: text("comments"),

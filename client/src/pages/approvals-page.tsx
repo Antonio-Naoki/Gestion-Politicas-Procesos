@@ -34,22 +34,25 @@ import {
   Loader2
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 type ExtendedApproval = Approval & {
-  document: Document;
-  documentCreator?: Partial<User>;
+  entityData?: any;
+  entityCreator?: Partial<User>;
 };
 
 export default function ApprovalsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
-  
+  const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
+
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
-  
+
   const { user } = useAuth();
-  
+  const { toast } = useToast();
+
   // Get pending tasks count for the badge in the sidebar
   const { data: tasks } = useQuery({
     queryKey: ["/api/tasks"],
@@ -57,44 +60,65 @@ export default function ApprovalsPage() {
       task.status === "pending" || task.status === "in_progress"
     )
   });
-  
+
   // Get all approvals with their documents and creators
   const { data: allApprovals, isLoading, isError } = useQuery<ExtendedApproval[]>({
     queryKey: ["/api/approvals"]
   });
-  
+
   // Filter approvals based on search and filters
   const filteredApprovals = allApprovals?.filter(approval => {
-    // Search query filter
-    const matchesSearch = searchQuery 
-      ? approval.document.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (approval.document.description || "").toLowerCase().includes(searchQuery.toLowerCase())
-      : true;
-    
+    // Entity type filter
+    const matchesEntityType = entityTypeFilter === "all" ? true : approval.entityType === entityTypeFilter;
+
     // Status filter
     const matchesStatus = statusFilter === "all" ? true : approval.status === statusFilter;
-    
-    // Department filter
-    const matchesDepartment = departmentFilter === "all" ? true : approval.document.department === departmentFilter;
-    
-    return matchesSearch && matchesStatus && matchesDepartment;
+
+    // Search query filter
+    let matchesSearch = true;
+    if (searchQuery) {
+      const title = approval.entityData?.title || "";
+      const description = approval.entityData?.description || "";
+      matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                     description.toLowerCase().includes(searchQuery.toLowerCase());
+    }
+
+    // Department filter - only applies to documents and policies
+    let matchesDepartment = true;
+    if (departmentFilter !== "all" && (approval.entityType === "document" || approval.entityType === "policy")) {
+      matchesDepartment = approval.entityData?.department === departmentFilter;
+    }
+
+    return matchesSearch && matchesStatus && matchesDepartment && matchesEntityType;
   });
-  
+
   // Separate approvals by status
   const pendingApprovals = filteredApprovals?.filter(approval => approval.status === "pending") || [];
   const approvedApprovals = filteredApprovals?.filter(approval => approval.status === "approved") || [];
   const rejectedApprovals = filteredApprovals?.filter(approval => approval.status === "rejected") || [];
-  
+
   // Get unique departments for filter options
   const departments = allApprovals 
-    ? [...new Set(allApprovals.map(approval => approval.document.department))]
+    ? [...new Set(allApprovals
+        .filter(approval => approval.entityType === "document" || approval.entityType === "policy")
+        .map(approval => approval.entityData?.department)
+        .filter(Boolean))]
     : [];
-  
-  const handleViewDocument = (document: Document) => {
-    setSelectedDocument(document);
-    setShowDocumentModal(true);
+
+  const handleViewEntity = (entity: any, entityType: string) => {
+    if (entityType === "document" || entityType === "policy") {
+      setSelectedDocument(entity);
+      setShowDocumentModal(true);
+    } else if (entityType === "task") {
+      // For tasks, we could implement a task preview modal in the future
+      // For now, just show a toast notification with task details
+      toast({
+        title: "Detalles de la Tarea",
+        description: `${entity.title} - ${entity.description || "Sin descripción"}`,
+      });
+    }
   };
-  
+
   return (
     <MainLayout 
       pendingApprovalCount={pendingApprovals.length || 0}
@@ -106,7 +130,7 @@ export default function ApprovalsPage() {
           Gestiona las solicitudes de aprobación de documentos
         </p>
       </div>
-      
+
       <Card className="mb-6">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Filtros</CardTitle>
@@ -125,7 +149,19 @@ export default function ApprovalsPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Select value={entityTypeFilter} onValueChange={setEntityTypeFilter}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  <SelectItem value="document">Documentos</SelectItem>
+                  <SelectItem value="task">Tareas</SelectItem>
+                  <SelectItem value="policy">Políticas</SelectItem>
+                </SelectContent>
+              </Select>
+
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Estado" />
@@ -137,7 +173,7 @@ export default function ApprovalsPage() {
                   <SelectItem value="rejected">Rechazado</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Departamento" />
@@ -155,7 +191,7 @@ export default function ApprovalsPage() {
           </div>
         </CardContent>
       </Card>
-      
+
       <Tabs defaultValue="pending" className="mb-6">
         <TabsList>
           <TabsTrigger value="pending" className="flex items-center">
@@ -171,7 +207,7 @@ export default function ApprovalsPage() {
             Rechazados ({rejectedApprovals.length})
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="pending" className="mt-6">
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
@@ -187,7 +223,7 @@ export default function ApprovalsPage() {
                 <ApprovalItem 
                   key={approval.id} 
                   approval={approval}
-                  onViewDocument={handleViewDocument}
+                  onViewEntity={handleViewEntity}
                 />
               ))}
             </div>
@@ -199,7 +235,7 @@ export default function ApprovalsPage() {
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="approved" className="mt-6">
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
@@ -211,7 +247,7 @@ export default function ApprovalsPage() {
                 <ApprovalItem 
                   key={approval.id} 
                   approval={approval}
-                  onViewDocument={handleViewDocument}
+                  onViewEntity={handleViewEntity}
                 />
               ))}
             </div>
@@ -223,7 +259,7 @@ export default function ApprovalsPage() {
             </div>
           )}
         </TabsContent>
-        
+
         <TabsContent value="rejected" className="mt-6">
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
@@ -235,7 +271,7 @@ export default function ApprovalsPage() {
                 <ApprovalItem 
                   key={approval.id} 
                   approval={approval}
-                  onViewDocument={handleViewDocument}
+                  onViewEntity={handleViewEntity}
                 />
               ))}
             </div>
@@ -248,7 +284,7 @@ export default function ApprovalsPage() {
           )}
         </TabsContent>
       </Tabs>
-      
+
       {/* Document Preview Modal */}
       <DocumentPreviewModal
         open={showDocumentModal}

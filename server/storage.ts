@@ -54,6 +54,9 @@ export interface IStorage {
   getAllApprovals(): Promise<Approval[]>;
   getApprovalsByUser(userId: number): Promise<Approval[]>;
   getApprovalsByDocumentId(documentId: number): Promise<Approval[]>;
+  getApprovalsByTaskId(taskId: number): Promise<Approval[]>;
+  getApprovalsByPolicyId(policyId: number): Promise<Approval[]>;
+  getApprovalsByEntityType(entityType: string): Promise<Approval[]>;
   createApproval(approval: InsertApproval): Promise<Approval>;
   updateApproval(id: number, approval: Partial<Approval>): Promise<Approval>;
 
@@ -283,6 +286,24 @@ export class MemStorage implements IStorage {
   async getApprovalsByDocumentId(documentId: number): Promise<Approval[]> {
     return Array.from(this.approvalsMap.values()).filter(
       (approval) => approval.documentId === documentId
+    );
+  }
+
+  async getApprovalsByTaskId(taskId: number): Promise<Approval[]> {
+    return Array.from(this.approvalsMap.values()).filter(
+      (approval) => approval.taskId === taskId
+    );
+  }
+
+  async getApprovalsByPolicyId(policyId: number): Promise<Approval[]> {
+    return Array.from(this.approvalsMap.values()).filter(
+      (approval) => approval.policyId === policyId
+    );
+  }
+
+  async getApprovalsByEntityType(entityType: string): Promise<Approval[]> {
+    return Array.from(this.approvalsMap.values()).filter(
+      (approval) => approval.entityType === entityType
     );
   }
 
@@ -667,6 +688,27 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(approvals)
       .where(eq(approvals.documentId, documentId));
+  }
+
+  async getApprovalsByTaskId(taskId: number): Promise<Approval[]> {
+    return await db
+      .select()
+      .from(approvals)
+      .where(eq(approvals.taskId, taskId));
+  }
+
+  async getApprovalsByPolicyId(policyId: number): Promise<Approval[]> {
+    return await db
+      .select()
+      .from(approvals)
+      .where(eq(approvals.policyId, policyId));
+  }
+
+  async getApprovalsByEntityType(entityType: string): Promise<Approval[]> {
+    return await db
+      .select()
+      .from(approvals)
+      .where(eq(approvals.entityType, entityType));
   }
 
   async createApproval(insertApproval: InsertApproval): Promise<Approval> {
