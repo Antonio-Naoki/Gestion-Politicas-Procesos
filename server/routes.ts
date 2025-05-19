@@ -303,15 +303,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Task routes
   app.get("/api/tasks", isAuthenticated, async (req, res) => {
     try {
+      let tasks;
       if (["admin", "manager", "coordinator"].includes(req.user.role)) {
         // Managers and coordinators can see all tasks
-        const tasks = await storage.getAllTasks();
-        return res.json(tasks);
+        tasks = await storage.getAllTasks();
+      } else {
+        // Regular users only see their assigned tasks
+        tasks = await storage.getTasksByAssignee(req.user.id);
       }
 
-      // Regular users only see their assigned tasks
-      const tasks = await storage.getTasksByAssignee(req.user.id);
-      res.json(tasks);
+      // Get all users to add user information to tasks
+      const users = await storage.getAllUsers();
+
+      // Map tasks to include user information
+      const tasksWithUsers = tasks.map(task => {
+        const assignedToUser = users.find(u => u.id === task.assignedTo);
+        const assignedByUser = users.find(u => u.id === task.assignedBy);
+
+        return {
+          ...task,
+          assignedToUser: assignedToUser ? {
+            id: assignedToUser.id,
+            name: assignedToUser.name,
+            role: assignedToUser.role
+          } : undefined,
+          assignedByUser: assignedByUser ? {
+            id: assignedByUser.id,
+            name: assignedByUser.name,
+            role: assignedByUser.role
+          } : undefined
+        };
+      });
+
+      res.json(tasksWithUsers);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch tasks" });
     }

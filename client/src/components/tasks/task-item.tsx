@@ -177,6 +177,10 @@ export function TaskItem({ task }: TaskItemProps) {
             </div>
             <div className="flex items-center">
               <User className="h-3.5 w-3.5 text-neutral-500 mr-1" />
+              <span>Asignado a: {task.assignedToUser?.name || "Usuario"}</span>
+            </div>
+            <div className="flex items-center col-span-2">
+              <User className="h-3.5 w-3.5 text-neutral-500 mr-1" />
               <span>Asignado por: {task.assignedByUser?.name || "Usuario"}</span>
             </div>
 
