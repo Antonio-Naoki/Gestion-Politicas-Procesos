@@ -48,11 +48,11 @@ export function DocumentCard({ document, onView, showSubmitButton, onSubmit }: D
     if (document.category === "process") {
       return "https://images.unsplash.com/photo-1544731612-de7f96afe55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&h=300";
     } else if (document.category === "policy") {
-      return "https://pixabay.com/get/gff4c9714c8feff06beb3e0a4e61504889eb4153dc8b0f13e6b3ac730ed68c395765e50063ec05e63301065bc4041bcbd71572beff0c276499bd5e3ff0d3dc94e_1280.jpg";
+      return "https://cdn.pixabay.com/photo/2018/01/17/20/22/analytics-3088958_1280.jpg";
     } else if (document.category === "quality") {
       return "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&h=300";
     } else {
-      return "https://pixabay.com/get/g253a681f59413f62f9237807f3d570ed56c4f37f60f3722461b12738e558a374e1a250e821615928c61e20cda9d141a059ba0b26d2bf51e291d3fd76e9ccc97b_1280.jpg";
+      return "https://cdn.pixabay.com/photo/2018/03/10/12/00/teamwork-3213924_1280.jpg";
     }
   };
 

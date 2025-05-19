@@ -17,7 +17,7 @@ interface DocumentPreviewModalProps {
 
 export function DocumentPreviewModal({ open, onClose, document }: DocumentPreviewModalProps) {
   const [documentVersions, setDocumentVersions] = useState<any[]>([]);
-  
+
   useEffect(() => {
     if (document?.id) {
       // Here you would fetch document versions from API
@@ -33,7 +33,7 @@ export function DocumentPreviewModal({ open, onClose, document }: DocumentPrevie
       setDocumentVersions(mockVersions);
     }
   }, [document]);
-  
+
   if (!document) return null;
 
   const formatDate = (date: Date) => {
@@ -66,7 +66,7 @@ export function DocumentPreviewModal({ open, onClose, document }: DocumentPrevie
             {/*</Button>*/}
           </div>
         </DialogHeader>
-        
+
         <ScrollArea className="flex-1 p-6">
           <div className="flex flex-col space-y-6">
             <div className="flex flex-col space-y-2">
@@ -98,25 +98,33 @@ export function DocumentPreviewModal({ open, onClose, document }: DocumentPrevie
                 </div>
               </div>
             </div>
-            
+
             <div className="border-t border-neutral-200 pt-6">
               <h3 className="text-md font-medium text-neutral-900 mb-4">Contenido del Documento</h3>
-              
+
               {document.category === "process" && (
                 <img 
-                  src="https://pixabay.com/get/g00b9e2d22c630fcdb1ecbfe40596e91babb8132ec8f9fa42bb26d971b7f7e6b16c908b73b969fe5e8a1651e97bc867cf399df130ffe3d8882b722ca1966a0b72_1280.jpg" 
+                  src="https://cdn.pixabay.com/photo/2020/03/19/21/25/flow-chart-4948176_1280.jpg" 
                   alt="Diagrama de flujo del proceso" 
                   className="w-full h-auto rounded-lg mb-6" 
                 />
               )}
-              
+
+              {document.category === "policy" && (
+                <img 
+                  src="https://cdn.pixabay.com/photo/2018/01/17/20/22/analytics-3088958_1280.jpg" 
+                  alt="Imagen de política" 
+                  className="w-full h-auto rounded-lg mb-6" 
+                />
+              )}
+
               <div className="space-y-4 text-sm text-neutral-800">
                 {document.content.split('\n').map((paragraph, index) => (
                   <p key={index}>{paragraph}</p>
                 ))}
               </div>
             </div>
-            
+
             {document.approvals && document.approvals.length > 0 && (
               <div className="border-t border-neutral-200 pt-6">
                 <h3 className="text-md font-medium text-neutral-900 mb-4">Historial de Aprobaciones</h3>
@@ -169,7 +177,7 @@ export function DocumentPreviewModal({ open, onClose, document }: DocumentPrevie
             )}
           </div>
         </ScrollArea>
-        
+
         <div className="px-6 py-4 border-t border-neutral-200 flex justify-between">
           <div className="flex space-x-2">
             <Button variant="outline" size="sm" className="flex items-center">

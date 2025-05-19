@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -85,11 +86,11 @@ function ActivityItem({ activity }: ActivityItemProps) {
   const getActivityDescription = () => {
     const details = activity.details as any;
     let description = "";
-    
+
     if (activity.user) {
       description += `${activity.user.name} `;
     }
-    
+
     switch (activity.action) {
       case "create":
         if (activity.entityType === "document") {
@@ -123,7 +124,7 @@ function ActivityItem({ activity }: ActivityItemProps) {
       default:
         description += `ha realizado una acción en el sistema.`;
     }
-    
+
     return description;
   };
 
@@ -131,7 +132,7 @@ function ActivityItem({ activity }: ActivityItemProps) {
     const now = new Date();
     const activityDate = new Date(date);
     const diffDays = Math.floor((now.getTime() - activityDate.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       return `Hoy, ${activityDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
     } else if (diffDays === 1) {
@@ -163,6 +164,8 @@ function ActivityItem({ activity }: ActivityItemProps) {
 }
 
 export function ActivityTimeline() {
+  const [displayCount, setDisplayCount] = useState(4);
+
   const { data: activities, isLoading } = useQuery<ExtendedActivity[]>({
     queryKey: ["/api/activities"],
     select: (data) => {
@@ -181,24 +184,30 @@ export function ActivityTimeline() {
       <CardContent className="px-6 py-4">
         <div className="relative">
           <div className="absolute top-0 bottom-0 left-4 w-0.5 bg-neutral-200"></div>
-          
+
           <div className="space-y-6">
             {isLoading ? (
               <div className="text-center py-4 text-neutral-500">Cargando actividad reciente...</div>
             ) : activities && activities.length > 0 ? (
-              activities.slice(0, 4).map((activity) => (
+              activities.slice(0, displayCount).map((activity) => (
                 <ActivityItem key={activity.id} activity={activity} />
               ))
             ) : (
               <div className="text-center py-4 text-neutral-500">No hay actividad reciente</div>
             )}
           </div>
-          
-          <div className="mt-6 text-center">
-            <Button variant="link" className="text-primary hover:text-primary-dark">
-              Ver más actividad
-            </Button>
-          </div>
+
+          {activities && activities.length > displayCount && (
+            <div className="mt-6 text-center">
+              <Button 
+                variant="link" 
+                className="text-primary hover:text-primary-dark"
+                onClick={() => setDisplayCount(prev => prev + 4)}
+              >
+                Ver más actividad
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

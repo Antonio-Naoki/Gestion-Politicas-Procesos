@@ -54,11 +54,11 @@ function DocumentCard({ document, onView }: DocumentCardProps) {
     if (document.category === "process") {
       return "https://images.unsplash.com/photo-1544731612-de7f96afe55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&h=300";
     } else if (document.category === "policy") {
-      return "https://pixabay.com/get/gff4c9714c8feff06beb3e0a4e61504889eb4153dc8b0f13e6b3ac730ed68c395765e50063ec05e63301065bc4041bcbd71572beff0c276499bd5e3ff0d3dc94e_1280.jpg";
+      return "https://cdn.pixabay.com/photo/2018/01/17/20/22/analytics-3088958_1280.jpg";
     } else if (document.category === "quality") {
       return "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&h=300";
     } else {
-      return "https://pixabay.com/get/g253a681f59413f62f9237807f3d570ed56c4f37f60f3722461b12738e558a374e1a250e821615928c61e20cda9d141a059ba0b26d2bf51e291d3fd76e9ccc97b_1280.jpg";
+      return "https://cdn.pixabay.com/photo/2018/03/10/12/00/teamwork-3213924_1280.jpg";
     }
   };
 
@@ -125,8 +125,9 @@ function DocumentCard({ document, onView }: DocumentCardProps) {
 
 export function RecentDocuments({ onViewDocument }: { onViewDocument: (document: Document) => void }) {
   const [newDocumentModalOpen, setNewDocumentModalOpen] = useState(false);
+  const [displayCount, setDisplayCount] = useState(4);
   const { user } = useAuth();
-  
+
   const { data: documents, isLoading } = useQuery<ExtendedDocument[]>({
     queryKey: ["/api/documents"],
     select: (data) => {
@@ -152,9 +153,16 @@ export function RecentDocuments({ onViewDocument }: { onViewDocument: (document:
               <Plus className="h-4 w-4 mr-1" />
               Nuevo Documento
             </Button>
-            <Button variant="link" size="sm" className="text-neutral-500 hover:text-primary">
-              Ver todos
-            </Button>
+            {documents && documents.length > displayCount && (
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="text-neutral-500 hover:text-primary"
+                onClick={() => setDisplayCount(prev => prev + 4)}
+              >
+                Ver todos
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="px-6 py-4">
@@ -163,7 +171,7 @@ export function RecentDocuments({ onViewDocument }: { onViewDocument: (document:
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {documents && documents.length > 0 ? (
-                documents.slice(0, 4).map((document) => (
+                documents.slice(0, displayCount).map((document) => (
                   <DocumentCard 
                     key={document.id} 
                     document={document}
@@ -179,7 +187,7 @@ export function RecentDocuments({ onViewDocument }: { onViewDocument: (document:
           )}
         </CardContent>
       </Card>
-      
+
       <NewDocumentModal
         open={newDocumentModalOpen}
         onClose={() => setNewDocumentModalOpen(false)}
