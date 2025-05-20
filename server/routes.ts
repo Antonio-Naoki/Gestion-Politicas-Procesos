@@ -377,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const approvalId = Number(req.params.id);
       const { status, comments } = req.body;
 
-      if (!["approved", "rejected"].includes(status)) {
+      if (!["approved", "rejected", "in_progress"].includes(status)) {
         return res.status(400).json({ message: "Invalid status" });
       }
 
@@ -433,6 +433,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   status: "rejected"
                 });
                 console.log(`Document ID: ${approval.documentId} marked as rejected`);
+              } else if (status === "in_progress") {
+                // If in progress, update document status
+                await storage.updateDocument(approval.documentId, {
+                  ...document,
+                  status: "in_progress"
+                });
+                console.log(`Document ID: ${approval.documentId} marked as in progress`);
               }
             }
           } else if (approval.entityType === "task" && approval.taskId) {
@@ -463,6 +470,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   status: "pending"
                 });
                 console.log(`Task ID: ${approval.taskId} marked as pending`);
+              } else if (status === "in_progress") {
+                // If in progress, update task status
+                await storage.updateTask(approval.taskId, {
+                  ...task,
+                  status: "in_progress"
+                });
+                console.log(`Task ID: ${approval.taskId} marked as in progress`);
               }
             }
           } else if (approval.entityType === "policy" && approval.policyId) {
@@ -493,6 +507,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   status: "rejected"
                 });
                 console.log(`Policy ID: ${approval.policyId} marked as rejected`);
+              } else if (status === "in_progress") {
+                // If in progress, update policy status
+                await storage.updateDocument(approval.policyId, {
+                  ...policy,
+                  status: "in_progress"
+                });
+                console.log(`Policy ID: ${approval.policyId} marked as in progress`);
               }
             }
           } else {

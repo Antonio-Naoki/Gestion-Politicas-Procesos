@@ -160,10 +160,12 @@ export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
             approval.status === "approved" ? "bg-success text-white" :
             approval.status === "rejected" ? "bg-destructive text-white" :
+            approval.status === "in_progress" ? "bg-primary text-white" :
             "bg-warning text-white"
           }`}>
             {approval.status === "approved" ? "Aprobado" :
              approval.status === "rejected" ? "Rechazado" :
+             approval.status === "in_progress" ? "En Progreso" :
              "Pendiente"}
           </span>
         </div>
