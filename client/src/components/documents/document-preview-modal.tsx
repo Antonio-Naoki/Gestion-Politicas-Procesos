@@ -76,7 +76,9 @@ export function DocumentPreviewModal({ open, onClose, document }: DocumentPrevie
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-neutral-500">Creado por:</span>
-                  <span className="ml-2 text-neutral-900">{document.createdByUser?.name || "Usuario"}</span>
+                  <span className="ml-2 text-neutral-900">
+                    {document.createdByUser?.name || document.createdByUser?.email || "Usuario"}
+                  </span>
                 </div>
                 <div>
                   <span className="text-neutral-500">Fecha de creación:</span>

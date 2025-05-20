@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
-import { useAuth } from "@/hooks/use-auth";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -15,9 +14,6 @@ export function MainLayout({
   pendingTaskCount = 0 
 }: MainLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const { user } = useAuth();
-  
-  if (!user) return null;
   
   const toggleSidebar = () => {
     setMobileSidebarOpen(!mobileSidebarOpen);

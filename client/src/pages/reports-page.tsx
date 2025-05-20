@@ -51,6 +51,7 @@ export default function ReportsPage() {
 
   const { data: approvals = [] } = useQuery<Approval[]>({
     queryKey: ["/api/approvals"],
+    select: (data) => data || []
   });
 
   const { data: tasks = [] } = useQuery<Task[]>({
@@ -91,23 +92,45 @@ export default function ReportsPage() {
 
       let element;
       let title = '';
+      let summary = '';
 
       switch (activeTab) {
         case 'documents':
           element = documentsChartRef.current;
           title = 'Reporte de Documentos';
+          summary = `Total de Documentos: ${documents.length}\n` +
+                   `Documentos Aprobados: ${documents.filter(d => d.status === 'approved').length}\n` +
+                   `Documentos Pendientes: ${documents.filter(d => d.status === 'pending').length}\n` +
+                   `Documentos en Borrador: ${documents.filter(d => d.status === 'draft').length}\n` +
+                   `Documentos Rechazados: ${documents.filter(d => d.status === 'rejected').length}`;
           break;
         case 'approvals':
           element = approvalsChartRef.current;
           title = 'Reporte de Aprobaciones';
+          summary = `Total de Aprobaciones: ${approvals.length}\n` +
+                   `Aprobaciones Pendientes: ${approvals.filter(a => a.status === 'pending').length}\n` +
+                   `Aprobaciones Aprobadas: ${approvals.filter(a => a.status === 'approved').length}\n` +
+                   `Aprobaciones Rechazadas: ${approvals.filter(a => a.status === 'rejected').length}`;
           break;
         case 'tasks':
           element = tasksChartRef.current;
           title = 'Reporte de Tareas';
+          summary = `Total de Tareas: ${tasks.length}\n` +
+                   `Tareas Urgentes: ${tasks.filter(t => t.priority === 'urgent').length}\n` +
+                   `Tareas de Alta Prioridad: ${tasks.filter(t => t.priority === 'high').length}\n` +
+                   `Tareas de Media Prioridad: ${tasks.filter(t => t.priority === 'medium').length}\n` +
+                   `Tareas de Baja Prioridad: ${tasks.filter(t => t.priority === 'low').length}`;
           break;
         case 'activity':
           element = activityChartRef.current;
           title = 'Reporte de Actividad';
+          const activityData = getActivityTimeSeries();
+          const totalActivity = activityData.datasets[0].data.reduce((a, b) => a + b, 0);
+          summary = `Período: ${timePeriod === 'week' ? 'Semanal' : timePeriod === 'month' ? 'Mensual' : 'Anual'}\n` +
+                   `Total de Actividades: ${totalActivity}\n` +
+                   `Promedio de Actividades: ${(totalActivity / activityData.datasets[0].data.length).toFixed(1)}\n` +
+                   `Máximo de Actividades: ${Math.max(...activityData.datasets[0].data)}\n` +
+                   `Mínimo de Actividades: ${Math.min(...activityData.datasets[0].data)}`;
           break;
         default:
           element = null;
@@ -132,38 +155,54 @@ export default function ReportsPage() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
+      // Add header with logo and title
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(0, 0, pdfWidth, 30, 'F');
+      
       // Add title
-      pdf.setFontSize(16);
-      pdf.text(title, pdfWidth / 2, 15, { align: 'center' });
+      pdf.setFontSize(20);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(title, pdfWidth / 2, 20, { align: 'center' });
 
-      // Add date
+      // Add date and time
       pdf.setFontSize(10);
-      pdf.text(`Generado: ${new Date().toLocaleDateString()}`, pdfWidth / 2, 22, { align: 'center' });
+      pdf.setTextColor(100, 100, 100);
+      const now = new Date();
+      pdf.text(`Generado: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, pdfWidth / 2, 28, { align: 'center' });
 
-      // Calculate image dimensions to fit the page
-      const imgWidth = pdfWidth - 20;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      // Add image
-      pdf.addImage(imgData, 'PNG', 10, 30, imgWidth, imgHeight);
-
-      // Add data table for the report
-      let yPosition = 30 + imgHeight + 10;
-
-      // Add table header
+      // Add executive summary
       pdf.setFontSize(12);
-      pdf.text('Datos del Reporte', 10, yPosition);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Resumen Ejecutivo', 15, 40);
+      
+      pdf.setFontSize(10);
+      const summaryLines = summary.split('\n');
+      let yPosition = 45;
+      summaryLines.forEach(line => {
+        pdf.text(line, 15, yPosition);
+        yPosition += 5;
+      });
+
+      // Add charts
+      yPosition += 5;
+      const imgWidth = pdfWidth - 30;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 15, yPosition, imgWidth, imgHeight);
+
+      // Add detailed statistics
+      yPosition += imgHeight + 10;
+      pdf.setFontSize(12);
+      pdf.text('Estadísticas Detalladas', 15, yPosition);
       yPosition += 8;
 
       pdf.setFontSize(10);
       pdf.setDrawColor(0);
       pdf.setFillColor(240, 240, 240);
 
-      // Add table content based on active tab
+      // Add detailed statistics based on active tab
       if (activeTab === 'documents') {
-        // Document statistics
-        pdf.text('Categoría', 15, yPosition);
-        pdf.text('Cantidad', 80, yPosition);
+        // Document categories
+        pdf.text('Categorías de Documentos', 15, yPosition);
         yPosition += 6;
 
         const categories = ['Proceso', 'Política', 'Instructivo', 'Procedimiento', 'Manual', 'Otro'];
@@ -177,14 +216,12 @@ export default function ReportsPage() {
         ];
 
         categories.forEach((category, index) => {
-          pdf.text(category, 15, yPosition);
-          pdf.text(categoryValues[index].toString(), 80, yPosition);
-          yPosition += 6;
+          pdf.text(`${category}: ${categoryValues[index]}`, 20, yPosition);
+          yPosition += 5;
         });
 
-        yPosition += 6;
-        pdf.text('Estado', 15, yPosition);
-        pdf.text('Cantidad', 80, yPosition);
+        yPosition += 5;
+        pdf.text('Estados de Documentos', 15, yPosition);
         yPosition += 6;
 
         const statuses = ['Borrador', 'Pendiente', 'Aprobado', 'Rechazado'];
@@ -196,60 +233,112 @@ export default function ReportsPage() {
         ];
 
         statuses.forEach((status, index) => {
-          pdf.text(status, 15, yPosition);
-          pdf.text(statusValues[index].toString(), 80, yPosition);
-          yPosition += 6;
+          pdf.text(`${status}: ${statusValues[index]}`, 20, yPosition);
+          yPosition += 5;
         });
       } else if (activeTab === 'approvals') {
-        // Approval statistics
-        pdf.text('Estado', 15, yPosition);
-        pdf.text('Cantidad', 80, yPosition);
+        // Approval details
+        pdf.text('Detalles de Aprobaciones', 15, yPosition);
         yPosition += 6;
 
-        const statuses = ['Pendientes', 'Aprobadas', 'Rechazadas'];
+        const statuses = ['Pendientes', 'En Progreso', 'Aprobadas', 'Rechazadas'];
         const statusValues = [
-          approvals.filter(a => a.status === 'pending').length,
-          approvals.filter(a => a.status === 'approved').length,
-          approvals.filter(a => a.status === 'rejected').length
+          (approvals as Approval[]).filter(a => a.status === 'pending').length,
+          (approvals as Approval[]).filter(a => a.status === 'in_progress').length,
+          (approvals as Approval[]).filter(a => a.status === 'approved').length,
+          (approvals as Approval[]).filter(a => a.status === 'rejected').length
         ];
 
         statuses.forEach((status, index) => {
-          pdf.text(status, 15, yPosition);
-          pdf.text(statusValues[index].toString(), 80, yPosition);
-          yPosition += 6;
+          pdf.text(`${status}: ${statusValues[index]}`, 20, yPosition);
+          yPosition += 5;
         });
-      } else if (activeTab === 'tasks') {
-        // Task statistics
-        pdf.text('Prioridad', 15, yPosition);
-        pdf.text('Cantidad', 80, yPosition);
+
+        // Add approval timeline
+        yPosition += 5;
+        pdf.text('Línea de Tiempo de Aprobaciones', 15, yPosition);
         yPosition += 6;
 
-        const priorities = ['Baja', 'Media', 'Alta', 'Urgente'];
+        const recentApprovals = approvals
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 5);
+
+        recentApprovals.forEach(approval => {
+          const date = new Date(approval.createdAt).toLocaleDateString();
+          pdf.text(`${date} - ${approval.status}`, 20, yPosition);
+          yPosition += 5;
+        });
+      } else if (activeTab === 'tasks') {
+        // Task details
+        pdf.text('Detalles de Tareas', 15, yPosition);
+        yPosition += 6;
+
+        const priorities = ['Urgente', 'Alta', 'Media', 'Baja'];
         const priorityValues = [
-          tasks.filter(t => t.priority === 'low').length,
-          tasks.filter(t => t.priority === 'medium').length,
+          tasks.filter(t => t.priority === 'urgent').length,
           tasks.filter(t => t.priority === 'high').length,
-          tasks.filter(t => t.priority === 'urgent').length
+          tasks.filter(t => t.priority === 'medium').length,
+          tasks.filter(t => t.priority === 'low').length
         ];
 
         priorities.forEach((priority, index) => {
-          pdf.text(priority, 15, yPosition);
-          pdf.text(priorityValues[index].toString(), 80, yPosition);
-          yPosition += 6;
+          pdf.text(`${priority}: ${priorityValues[index]}`, 20, yPosition);
+          yPosition += 5;
+        });
+
+        // Add task status
+        yPosition += 5;
+        pdf.text('Estado de Tareas', 15, yPosition);
+        yPosition += 6;
+
+        const statuses = ['Pendiente', 'En Progreso', 'Completada'];
+        const statusValues = [
+          tasks.filter(t => t.status === 'pending').length,
+          tasks.filter(t => t.status === 'in_progress').length,
+          tasks.filter(t => t.status === 'completed').length
+        ];
+
+        statuses.forEach((status, index) => {
+          pdf.text(`${status}: ${statusValues[index]}`, 20, yPosition);
+          yPosition += 5;
         });
       } else if (activeTab === 'activity') {
-        // Activity statistics
-        pdf.text('Período', 15, yPosition);
-        pdf.text('Actividades', 80, yPosition);
+        // Activity details
+        pdf.text('Detalles de Actividad', 15, yPosition);
         yPosition += 6;
 
         const activityData = getActivityTimeSeries();
-
         activityData.labels.forEach((label, index) => {
-          pdf.text(label, 15, yPosition);
-          pdf.text(activityData.datasets[0].data[index].toString(), 80, yPosition);
-          yPosition += 6;
+          pdf.text(`${label}: ${activityData.datasets[0].data[index]} actividades`, 20, yPosition);
+          yPosition += 5;
         });
+
+        // Add activity trends
+        yPosition += 5;
+        pdf.text('Tendencias de Actividad', 15, yPosition);
+        yPosition += 6;
+
+        const data = activityData.datasets[0].data;
+        const trend = data[data.length - 1] > data[0] ? 'Ascendente' : 'Descendente';
+        const avgActivity = data.reduce((a, b) => a + b, 0) / data.length;
+        
+        pdf.text(`Tendencia: ${trend}`, 20, yPosition);
+        yPosition += 5;
+        pdf.text(`Promedio de Actividad: ${avgActivity.toFixed(1)}`, 20, yPosition);
+      }
+
+      // Add footer
+      const pageCount = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(
+          `Página ${i} de ${pageCount} - TaskTrackMaster`,
+          pdfWidth / 2,
+          pdfHeight - 10,
+          { align: 'center' }
+        );
       }
 
       // Save PDF
@@ -384,6 +473,31 @@ export default function ReportsPage() {
     };
   };
 
+  const approvalsByStatus = {
+    labels: ['Pendientes', 'En Progreso', 'Aprobadas', 'Rechazadas'],
+    datasets: [{
+      data: [
+        (approvals as Approval[]).filter(a => a.status === 'pending').length,
+        (approvals as Approval[]).filter(a => a.status === 'in_progress').length,
+        (approvals as Approval[]).filter(a => a.status === 'approved').length,
+        (approvals as Approval[]).filter(a => a.status === 'rejected').length
+      ],
+      backgroundColor: [
+        'rgba(255, 193, 7, 0.6)',   // Amarillo para pendientes
+        'rgba(54, 162, 235, 0.6)',  // Azul para en progreso
+        'rgba(40, 167, 69, 0.6)',   // Verde para aprobadas
+        'rgba(220, 53, 69, 0.6)'    // Rojo para rechazadas
+      ],
+      borderColor: [
+        'rgba(255, 193, 7, 1)',
+        'rgba(54, 162, 235, 1)',
+        'rgba(40, 167, 69, 1)',
+        'rgba(220, 53, 69, 1)'
+      ],
+      borderWidth: 1
+    }]
+  };
+
   return (
     <MainLayout>
       <div className="mb-6">
@@ -443,40 +557,112 @@ export default function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="approvals">
-          <Card ref={approvalsChartRef}>
-            <CardHeader>
-              <CardTitle>Estado de Aprobaciones</CardTitle>
-              <CardDescription>Resumen del estado de todas las solicitudes de aprobación</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <Pie 
-                  data={{
-                    labels: ['Pendientes', 'Aprobadas', 'Rechazadas'],
-                    datasets: [{
-                      data: [
-                        approvals?.filter(a => a.status === 'pending').length || 0,
-                        approvals?.filter(a => a.status === 'approved').length || 0, 
-                        approvals?.filter(a => a.status === 'rejected').length || 0
-                      ],
-                      backgroundColor: [
-                        'rgba(255, 193, 7, 0.6)',
-                        'rgba(40, 167, 69, 0.6)',
-                        'rgba(220, 53, 69, 0.6)'
-                      ],
-                      borderColor: [
-                        'rgba(255, 193, 7, 1)',
-                        'rgba(40, 167, 69, 1)',
-                        'rgba(220, 53, 69, 1)'
-                      ],
-                      borderWidth: 1
-                    }]
-                  }}
-                  options={{ maintainAspectRatio: false }}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6" ref={approvalsChartRef}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Estado de Aprobaciones</CardTitle>
+                <CardDescription>Distribución de aprobaciones por estado</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {approvals.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-80 text-muted-foreground">
+                    <p>No hay datos de aprobaciones disponibles</p>
+                  </div>
+                ) : (
+                  <div className="h-80">
+                    <Pie 
+                      data={approvalsByStatus}
+                      options={{ 
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            position: 'bottom',
+                            labels: {
+                              padding: 20,
+                              font: {
+                                size: 12
+                              }
+                            }
+                          },
+                          tooltip: {
+                            callbacks: {
+                              label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                              }
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Timeline de Aprobaciones</CardTitle>
+                <CardDescription>Actividad de aprobaciones en el tiempo</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {approvals.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-80 text-muted-foreground">
+                    <p>No hay datos de aprobaciones disponibles</p>
+                  </div>
+                ) : (
+                  <div className="h-80">
+                    <Bar 
+                      data={{
+                        labels: ['Pendientes', 'En Progreso', 'Aprobadas', 'Rechazadas'],
+                        datasets: [{
+                          label: 'Cantidad de Aprobaciones',
+                          data: [
+                            (approvals as Approval[]).filter(a => a.status === 'pending').length,
+                            (approvals as Approval[]).filter(a => a.status === 'in_progress').length,
+                            (approvals as Approval[]).filter(a => a.status === 'approved').length,
+                            (approvals as Approval[]).filter(a => a.status === 'rejected').length
+                          ],
+                          backgroundColor: [
+                            'rgba(255, 193, 7, 0.6)',
+                            'rgba(54, 162, 235, 0.6)',
+                            'rgba(40, 167, 69, 0.6)',
+                            'rgba(220, 53, 69, 0.6)'
+                          ],
+                          borderColor: [
+                            'rgba(255, 193, 7, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(40, 167, 69, 1)',
+                            'rgba(220, 53, 69, 1)'
+                          ],
+                          borderWidth: 1
+                        }]
+                      }}
+                      options={{
+                        maintainAspectRatio: false,
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: {
+                              stepSize: 1
+                            }
+                          }
+                        },
+                        plugins: {
+                          legend: {
+                            display: false
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="tasks">

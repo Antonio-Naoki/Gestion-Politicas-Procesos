@@ -12,6 +12,8 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/use-auth";
+import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown";
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -27,6 +29,7 @@ export function Header({ toggleSidebar, notificationCount = 0 }: HeaderProps) {
     commonQuestions: false,
     faq: false
   });
+  const { user } = useAuth();
 
   const toggleSection = (section: 'howToUse' | 'commonQuestions' | 'faq') => {
     setExpandedSections(prev => ({
@@ -51,8 +54,8 @@ export function Header({ toggleSidebar, notificationCount = 0 }: HeaderProps) {
     <header className="bg-white shadow-sm z-10">
       <div className="flex items-center justify-between h-16 px-4 sm:px-6">
         <div className="flex items-center">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             className="md:hidden text-neutral-500"
             onClick={toggleSidebar}
@@ -87,18 +90,7 @@ export function Header({ toggleSidebar, notificationCount = 0 }: HeaderProps) {
             </Button>
           )}
 
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-neutral-500 hover:text-neutral-900"
-            >
-              <Bell className="h-5 w-5" />
-              {notificationCount > 0 && (
-                <span className="absolute top-0 right-0 w-3 h-3 bg-destructive rounded-full"></span>
-              )}
-            </Button>
-          </div>
+          <NotificationsDropdown />
 
           <div className="relative">
             <Button

@@ -35,6 +35,7 @@ import {
   Clock,
   RotateCw
 } from "lucide-react";
+import { useNotificationTrigger } from "@/hooks/use-notification-trigger";
 
 type ExtendedDocument = Document & {
   createdByUser?: Partial<User>;
@@ -53,6 +54,7 @@ export default function DocumentsPage() {
 
   const { user } = useAuth();
   const { toast } = useToast();
+  const { triggerNotification } = useNotificationTrigger();
 
   // Get approvals and tasks counts for the badge in the sidebar
   const { data: approvals } = useQuery({
@@ -72,11 +74,12 @@ export default function DocumentsPage() {
     queryKey: ["/api/documents"],
     refetchOnMount: true,
     staleTime: 0,
-    onSuccess: (data) => {
-      console.log("Raw documents data:", data);
-    },
-    onError: (error) => {
-      console.error("Error fetching documents:", error);
+    select: (data: any) => {
+      console.log("Raw API response:", data);
+      return data.map((doc: any) => ({
+        ...doc,
+        createdByUser: doc.createdByUser || { name: "Usuario" }
+      }));
     }
   });
 
@@ -250,6 +253,44 @@ export default function DocumentsPage() {
   const departments = [...new Set(documentsArray.map(doc => doc.department))];
   console.log("Categories:", categories);
   console.log("Departments:", departments);
+
+  const handleCreateDocument = async (data: DocumentFormData) => {
+    try {
+      // Your existing document creation logic
+      const response = await api.post("/api/documents", data);
+      
+      // Trigger notification
+      triggerNotification(
+        "document",
+        "Nuevo documento creado",
+        `Se ha creado el documento "${data.title}"`,
+        `/documents/${response.data.id}`
+      );
+      
+      // Rest of your success handling
+    } catch (error) {
+      // Your error handling
+    }
+  };
+
+  const handleUpdateDocument = async (id: number, data: DocumentFormData) => {
+    try {
+      // Your existing document update logic
+      await api.patch(`/api/documents/${id}`, data);
+      
+      // Trigger notification
+      triggerNotification(
+        "document",
+        "Documento actualizado",
+        `Se ha actualizado el documento "${data.title}"`,
+        `/documents/${id}`
+      );
+      
+      // Rest of your success handling
+    } catch (error) {
+      // Your error handling
+    }
+  };
 
   return (
     <MainLayout 

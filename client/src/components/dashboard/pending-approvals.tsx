@@ -1,11 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, CheckCircle, XCircle } from "lucide-react";
+import { Eye, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { User, Document, Approval } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface PendingApprovalItemProps {
   document: Document & { createdByUser: Partial<User> };
@@ -116,7 +118,17 @@ type ExtendedApproval = Approval & {
   document: Document & { createdByUser: Partial<User> };
 };
 
-export function PendingApprovals({ onViewDocument }: { onViewDocument: (document: Document) => void }) {
+interface PendingApprovalsProps {
+  onViewDocument: (document: Document) => void;
+  recentApprovals: Array<{
+    id: number;
+    document: Document;
+    status: string;
+    createdAt: string;
+  }>;
+}
+
+export function PendingApprovals({ onViewDocument, recentApprovals }: PendingApprovalsProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   
@@ -175,63 +187,44 @@ export function PendingApprovals({ onViewDocument }: { onViewDocument: (document
   };
 
   return (
-    <Card className="col-span-2">
-      <CardHeader className="px-6 py-4 border-b border-neutral-200 flex flex-row items-center justify-between">
-        <CardTitle className="text-lg font-semibold text-neutral-900">Aprobaciones Pendientes</CardTitle>
-        <Button variant="link" size="sm" className="text-primary">
-          Ver todas
-        </Button>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Clock className="h-5 w-5 text-secondary" />
+          Aprobaciones Pendientes
+        </CardTitle>
       </CardHeader>
-      <CardContent className="px-6 py-4">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-neutral-200">
-            <thead>
-              <tr>
-                <th className="px-3 py-3 bg-neutral-50 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Documento
-                </th>
-                <th className="px-3 py-3 bg-neutral-50 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Solicitante
-                </th>
-                <th className="px-3 py-3 bg-neutral-50 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Fecha
-                </th>
-                <th className="px-3 py-3 bg-neutral-50 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-3 py-3 bg-neutral-50 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-neutral-200">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-3 py-4 text-center text-sm text-neutral-500">
-                    Cargando aprobaciones pendientes...
-                  </td>
-                </tr>
-              ) : approvals && approvals.length > 0 ? (
-                approvals.map((approval) => (
-                  <PendingApprovalItem 
-                    key={approval.id} 
-                    document={approval.document}
-                    approval={approval}
-                    onView={() => onViewDocument(approval.document)}
-                    onApprove={handleApprove}
-                    onReject={handleReject}
-                  />
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-3 py-4 text-center text-sm text-neutral-500">
-                    No hay aprobaciones pendientes
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <CardContent>
+        {recentApprovals.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground">
+            No hay aprobaciones pendientes
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {recentApprovals.map((approval) => (
+              <div
+                key={approval.id}
+                className="flex items-start justify-between p-3 rounded-lg hover:bg-accent cursor-pointer"
+                onClick={() => onViewDocument(approval.document)}
+              >
+                <div className="space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {approval.document.title}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {approval.document.department}
+                  </p>
+                </div>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {formatDistanceToNow(new Date(approval.createdAt), {
+                    addSuffix: true,
+                    locale: es,
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
