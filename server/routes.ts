@@ -178,24 +178,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Approval routes
-  app.get("/api/approvals", isAuthenticated, async (req, res) => {
+  app.get("/api/approvals", isAuthenticated, checkRole(["admin", "manager"]), async (req, res) => {
     try {
       let approvals = [];
       const entityType = req.query.entityType as string;
 
-      // For managers and coordinators - show all approvals they can manage
-      if (["manager", "coordinator", "admin"].includes(req.user.role)) {
-        if (entityType) {
-          approvals = await storage.getApprovalsByEntityType(entityType);
-        } else {
-          approvals = await storage.getAllApprovals();
-        }
+      // For managers and admins - show all approvals they can manage
+      if (entityType) {
+        approvals = await storage.getApprovalsByEntityType(entityType);
       } else {
-        // For others - show only approvals for their documents/tasks/policies
-        approvals = await storage.getApprovalsByUser(req.user.id);
-        if (entityType) {
-          approvals = approvals.filter(approval => approval.entityType === entityType);
-        }
+        approvals = await storage.getAllApprovals();
       }
 
       // Fetch related data for each approval with individual error handling
@@ -220,7 +212,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         } catch (err) {
           console.error(`Error fetching data for approval ${approval.id}:`, err);
-          // Return the approval without entity data if there's an error
           return {
             ...approval,
             entityData: null
@@ -235,7 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/documents/:id/submit", isAuthenticated, async (req, res) => {
+  app.post("/api/documents/:id/submit", isAuthenticated, checkRole(["admin", "manager"]), async (req, res) => {
     try {
       const documentId = Number(req.params.id);
       const document = await storage.getDocument(documentId);
@@ -244,19 +235,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Document not found" });
       }
 
-      // Check if user is the creator
-      if (document.createdBy !== req.user.id && !["admin", "manager"].includes(req.user.role)) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
       // Update document status
       await storage.updateDocument(documentId, { 
         ...document,
         status: "pending" 
       });
 
-      // Create approval request for managers/coordinators
-      const managers = await storage.getUsersByRole(["manager", "coordinator"]);
+      // Create approval request for managers/admins
+      const managers = await storage.getUsersByRole(["manager", "admin"]);
 
       for (const manager of managers) {
         await storage.createApproval({
@@ -283,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Submit task for approval
-  app.post("/api/tasks/:id/submit", isAuthenticated, async (req, res) => {
+  app.post("/api/tasks/:id/submit", isAuthenticated, checkRole(["admin", "manager"]), async (req, res) => {
     try {
       const taskId = Number(req.params.id);
       const task = await storage.getTask(taskId);
@@ -292,13 +278,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Task not found" });
       }
 
-      // Check if user is the assignee or has appropriate role
-      if (task.assignedTo !== req.user.id && !["admin", "manager"].includes(req.user.role)) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
-      // Create approval request for managers/coordinators
-      const managers = await storage.getUsersByRole(["manager", "coordinator"]);
+      // Create approval request for managers/admins
+      const managers = await storage.getUsersByRole(["manager", "admin"]);
 
       for (const manager of managers) {
         await storage.createApproval({
@@ -325,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Submit policy for approval
-  app.post("/api/policies/:id/submit", isAuthenticated, async (req, res) => {
+  app.post("/api/policies/:id/submit", isAuthenticated, checkRole(["admin", "manager"]), async (req, res) => {
     try {
       const policyId = Number(req.params.id);
       const policy = await storage.getDocument(policyId);
@@ -334,19 +315,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Policy not found" });
       }
 
-      // Check if user is the creator
-      if (policy.createdBy !== req.user.id && !["admin", "manager"].includes(req.user.role)) {
-        return res.status(403).json({ message: "Forbidden" });
-      }
-
       // Update policy status
       await storage.updateDocument(policyId, { 
         ...policy,
         status: "pending" 
       });
 
-      // Create approval request for managers/coordinators
-      const managers = await storage.getUsersByRole(["manager", "coordinator"]);
+      // Create approval request for managers/admins
+      const managers = await storage.getUsersByRole(["manager", "admin"]);
 
       for (const manager of managers) {
         await storage.createApproval({

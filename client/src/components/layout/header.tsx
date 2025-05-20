@@ -134,11 +134,14 @@ export function Header({ toggleSidebar, notificationCount = 0 }: HeaderProps) {
                     <div className="p-4 space-y-3 border-t">
                       <p>TaskTrackMaster es una aplicación para gestionar documentos, tareas y aprobaciones en su organización. Aquí hay una guía rápida para comenzar:</p>
                       <ul className="list-disc pl-5 space-y-2">
-                        <li>Use el <strong>Dashboard</strong> para ver un resumen de sus actividades pendientes.</li>
-                        <li>En <strong>Documentos</strong> puede crear y gestionar documentos importantes.</li>
-                        <li>La sección de <strong>Aprobaciones</strong> muestra documentos que requieren su revisión.</li>
-                        <li>Use <strong>Tareas</strong> para gestionar sus actividades pendientes.</li>
-                        <li>En <strong>Políticas</strong> encontrará documentos oficiales que debe conocer.</li>
+                        <li>Use el <strong>Dashboard</strong> para ver un resumen de sus actividades pendientes y métricas importantes.</li>
+                        <li>En <strong>Documentos</strong> puede crear, gestionar y compartir documentos importantes de la organización.</li>
+                        <li>La sección de <strong>Aprobaciones</strong> muestra documentos que requieren su revisión y firma.</li>
+                        <li>Use <strong>Tareas</strong> para gestionar sus actividades pendientes y asignar responsabilidades.</li>
+                        <li>En <strong>Políticas</strong> encontrará documentos oficiales y procedimientos que debe conocer.</li>
+                        <li>La sección de <strong>Reportes</strong> le permite generar informes detallados y análisis de datos.</li>
+                        <li>En <strong>Usuarios</strong> puede gestionar los miembros del equipo y sus permisos.</li>
+                        <li>Use <strong>Configuración</strong> para personalizar su experiencia y preferencias.</li>
                       </ul>
                     </div>
                   )}
@@ -165,15 +168,23 @@ export function Header({ toggleSidebar, notificationCount = 0 }: HeaderProps) {
                     <div className="p-4 space-y-4 border-t">
                       <div className="p-3 bg-muted/20 rounded-md">
                         <h4 className="font-medium">¿Cómo creo un nuevo documento?</h4>
-                        <p className="text-sm mt-1">Vaya a la sección de Documentos y haga clic en el botón "Nuevo Documento". Complete el formulario con la información requerida.</p>
+                        <p className="text-sm mt-1">Vaya a la sección de Documentos y haga clic en el botón "Nuevo Documento". Complete el formulario con la información requerida y adjunte los archivos necesarios.</p>
+                      </div>
+                      <div className="p-3 bg-muted/20 rounded-md">
+                        <h4 className="font-medium">¿Cómo funciona el sistema de aprobaciones?</h4>
+                        <p className="text-sm mt-1">Cuando se crea un documento que requiere aprobación, se notifica a los aprobadores designados. Ellos pueden revisar, comentar y aprobar o rechazar el documento.</p>
+                      </div>
+                      <div className="p-3 bg-muted/20 rounded-md">
+                        <h4 className="font-medium">¿Cómo genero reportes?</h4>
+                        <p className="text-sm mt-1">En la sección de Reportes, seleccione el tipo de informe deseado, configure los filtros y fechas, luego haga clic en "Generar Reporte". Puede exportar en varios formatos.</p>
                       </div>
                       <div className="p-3 bg-muted/20 rounded-md">
                         <h4 className="font-medium">¿Cómo asigno una tarea?</h4>
-                        <p className="text-sm mt-1">En la sección de Tareas, haga clic en "Nueva Tarea", seleccione el usuario al que desea asignarla y complete los detalles.</p>
+                        <p className="text-sm mt-1">En la sección de Tareas, haga clic en "Nueva Tarea", seleccione el usuario al que desea asignarla, establezca la prioridad y fecha límite, y complete los detalles.</p>
                       </div>
                       <div className="p-3 bg-muted/20 rounded-md">
                         <h4 className="font-medium">¿Cómo cambio mi contraseña?</h4>
-                        <p className="text-sm mt-1">Vaya a Configuración, seleccione la pestaña "Cuenta" y use la opción para cambiar su contraseña.</p>
+                        <p className="text-sm mt-1">Vaya a Configuración, seleccione la pestaña "Cuenta" y use la opción para cambiar su contraseña. Asegúrese de usar una contraseña segura.</p>
                       </div>
                     </div>
                   )}
@@ -200,15 +211,23 @@ export function Header({ toggleSidebar, notificationCount = 0 }: HeaderProps) {
                     <div className="p-4 space-y-4 border-t">
                       <div className="p-3 bg-muted/20 rounded-md">
                         <h4 className="font-medium">¿Quién puede aprobar documentos?</h4>
-                        <p className="text-sm mt-1">Los usuarios con roles de Administrador, Manager o Coordinador pueden aprobar documentos.</p>
+                        <p className="text-sm mt-1">Los usuarios con roles de Administrador, Manager o Coordinador pueden aprobar documentos. Los permisos específicos se configuran en la sección de Usuarios.</p>
+                      </div>
+                      <div className="p-3 bg-muted/20 rounded-md">
+                        <h4 className="font-medium">¿Qué tipos de reportes puedo generar?</h4>
+                        <p className="text-sm mt-1">Puede generar reportes de tareas pendientes, documentos por estado, aprobaciones por usuario, tiempos de respuesta, y métricas de rendimiento del equipo.</p>
                       </div>
                       <div className="p-3 bg-muted/20 rounded-md">
                         <h4 className="font-medium">¿Cómo actualizo mi perfil?</h4>
-                        <p className="text-sm mt-1">Vaya a Configuración y modifique los campos en la pestaña "Perfil".</p>
+                        <p className="text-sm mt-1">Vaya a Configuración y modifique los campos en la pestaña "Perfil". Puede actualizar su información personal, preferencias y configuración de notificaciones.</p>
+                      </div>
+                      <div className="p-3 bg-muted/20 rounded-md">
+                        <h4 className="font-medium">¿Cómo funciona el sistema de notificaciones?</h4>
+                        <p className="text-sm mt-1">Recibirá notificaciones cuando tenga tareas pendientes, documentos por aprobar, o cuando otros usuarios interactúen con sus documentos. Configure sus preferencias en Configuración.</p>
                       </div>
                       <div className="p-3 bg-muted/20 rounded-md">
                         <h4 className="font-medium">¿Puedo exportar reportes?</h4>
-                        <p className="text-sm mt-1">Sí, en la sección de Reportes puede generar y exportar diferentes tipos de informes.</p>
+                        <p className="text-sm mt-1">Sí, en la sección de Reportes puede generar y exportar diferentes tipos de informes en formatos PDF, Excel o CSV para su análisis posterior.</p>
                       </div>
                     </div>
                   )}

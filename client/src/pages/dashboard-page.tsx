@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useNotificationTrigger } from "@/hooks/use-notification-trigger";
 import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ApprovalWithDocument extends Approval {
   document: Document;
@@ -34,17 +35,20 @@ interface ApprovalData {
 
 // Helper for status type guard
 const allowedStatuses = ["pending", "in_progress", "approved", "rejected", "draft"] as const;
-function toStatus(status: string): typeof allowedStatuses[number] {
-  return allowedStatuses.includes(status as any) ? status as typeof allowedStatuses[number] : "draft";
+type Status = typeof allowedStatuses[number];
+
+function toStatus(status: string): Status {
+  return allowedStatuses.includes(status as Status) ? status as Status : "draft";
 }
 
 export default function DashboardPage() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const { triggerNotification } = useNotificationTrigger();
+  const { user } = useAuth();
   
-  // Get pending approvals count
-  const { data: approvals = { pendingApprovals: [], completedApprovals: [], recentApprovals: [] } } = useQuery<ApprovalData>({
+  // Get pending approvals count - only for admin and manager roles
+  const { data: approvalsData } = useQuery<ApprovalData>({
     queryKey: ["/api/approvals"],
     queryFn: async () => {
       const [approvalsResponse, documentsResponse] = await Promise.all([
@@ -59,23 +63,8 @@ export default function DashboardPage() {
       const approvalsWithDocuments = approvals.map((approval: Approval) => {
         const document = documents.find((doc: Document) => doc.id === approval.documentId);
         return {
-          id: approval.id,
-          status: approval.status,
-          createdAt: new Date(approval.createdAt).toISOString(),
-          document: document ? {
-            id: document.id,
-            title: document.title,
-            description: document.description,
-            content: document.content,
-            category: document.category,
-            department: document.department,
-            version: document.version,
-            status: document.status,
-            createdBy: document.createdBy,
-            createdAt: typeof document.createdAt === 'string' ? document.createdAt : new Date(document.createdAt).toISOString(),
-            updatedAt: typeof document.updatedAt === 'string' ? document.updatedAt : new Date(document.updatedAt).toISOString(),
-            tags: document.tags
-          } : {
+          ...approval,
+          document: document || {
             id: 0,
             title: "Documento no encontrado",
             description: null,
@@ -87,63 +76,49 @@ export default function DashboardPage() {
             createdBy: 0,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            tags: null
+            tags: null,
+            fileUrl: null
           }
         };
       });
       
-      const pendingApprovals = approvalsWithDocuments.filter((approval: { status: string }) => approval.status === "pending");
-      const completedApprovals = approvalsWithDocuments.filter((approval: { status: string }) => approval.status === "approved");
-      const recentApprovals = (pendingApprovals
-        .sort((a: { createdAt: string }, b: { createdAt: string }) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      const pendingApprovals = approvalsWithDocuments.filter(
+        (approval: ApprovalWithDocument) => approval.status === "pending"
+      );
+      
+      const completedApprovals = approvalsWithDocuments.filter(
+        (approval: ApprovalWithDocument) => approval.status === "approved"
+      );
+      
+      const recentApprovals = pendingApprovals
+        .sort((a: ApprovalWithDocument, b: ApprovalWithDocument) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
         .slice(0, 5)
-        .map((approval) => ({
+        .map((approval: ApprovalWithDocument) => ({
           id: approval.id,
           status: approval.status,
           createdAt: approval.createdAt,
           document: {
-            id: approval.document.id,
-            title: approval.document.title,
-            description: approval.document.description,
-            content: approval.document.content,
-            category: approval.document.category,
-            department: approval.document.department,
-            version: approval.document.version,
-            status: toStatus(approval.document.status),
-            createdBy: approval.document.createdBy,
-            createdAt: String(approval.document.createdAt),
-            updatedAt: String(approval.document.updatedAt),
-            tags: approval.document.tags,
-            fileUrl: approval.document.fileUrl ?? null
+            ...approval.document,
+            status: toStatus(approval.document.status)
           }
-        })) as Array<{
-          id: number;
-          status: string;
-          createdAt: string;
-          document: {
-            id: number;
-            title: string;
-            description: string | null;
-            content: string;
-            category: string;
-            department: string;
-            version: string;
-            status: string;
-            createdBy: number;
-            createdAt: string;
-            updatedAt: string;
-            tags: string[] | null;
-            fileUrl: string | null;
-          };
-        }>)
+        }));
       
       return {
         pendingApprovals,
         completedApprovals,
         recentApprovals
       };
-    }
+    },
+    enabled: user?.role === "admin" || user?.role === "manager"
   });
+
+  const approvals = approvalsData || {
+    pendingApprovals: [],
+    completedApprovals: [],
+    recentApprovals: []
+  };
   
   // Get pending tasks count
   const { data: tasks = [] } = useQuery({
@@ -185,7 +160,7 @@ export default function DashboardPage() {
   
   return (
     <MainLayout 
-      pendingApprovalCount={approvals.pendingApprovals.length}
+      pendingApprovalCount={user?.role === "admin" || user?.role === "manager" ? approvals.pendingApprovals.length : 0}
       pendingTaskCount={tasks.length}
     >
       {/* Dashboard Overview */}
@@ -200,25 +175,29 @@ export default function DashboardPage() {
           changeText="desde el último mes"
         />
         
-        <StatsCard
-          title="Pendientes de Aprobación"
-          value={approvals.pendingApprovals.length}
-          icon={<Timer className="h-5 w-5" />}
-          iconBgColor="bg-secondary bg-opacity-10"
-          iconColor="text-secondary"
-          changeValue={5}
-          changeText="desde el último mes"
-        />
-        
-        <StatsCard
-          title="Aprobaciones Completadas"
-          value={approvals.completedApprovals.length}
-          icon={<CheckCircle className="h-5 w-5" />}
-          iconBgColor="bg-success bg-opacity-10"
-          iconColor="text-success"
-          changeValue={18}
-          changeText="desde el último mes"
-        />
+        {(user?.role === "admin" || user?.role === "manager") && (
+          <>
+            <StatsCard
+              title="Pendientes de Aprobación"
+              value={approvals.pendingApprovals.length}
+              icon={<Timer className="h-5 w-5" />}
+              iconBgColor="bg-secondary bg-opacity-10"
+              iconColor="text-secondary"
+              changeValue={5}
+              changeText="desde el último mes"
+            />
+            
+            <StatsCard
+              title="Aprobaciones Completadas"
+              value={approvals.completedApprovals.length}
+              icon={<CheckCircle className="h-5 w-5" />}
+              iconBgColor="bg-success bg-opacity-10"
+              iconColor="text-success"
+              changeValue={18}
+              changeText="desde el último mes"
+            />
+          </>
+        )}
         
         <StatsCard
           title="Políticas Activas"
@@ -233,11 +212,13 @@ export default function DashboardPage() {
       
       {/* Main content sections */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Pending Approvals Section */}
-        <PendingApprovals 
-          onViewDocument={handleViewDocument} 
-          recentApprovals={approvals.recentApprovals}
-        />
+        {/* Pending Approvals Section - Only for admin and manager */}
+        {(user?.role === "admin" || user?.role === "manager") && (
+          <PendingApprovals 
+            onViewDocument={handleViewDocument} 
+            recentApprovals={approvals.recentApprovals}
+          />
+        )}
         
         {/* Tasks Section */}
         <TasksList />

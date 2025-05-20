@@ -32,10 +32,12 @@ import {
   Clock,
   Search,
   Loader2,
-  RotateCw
+  RotateCw,
+  AlertCircle
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 type ExtendedApproval = Approval & {
   entityData?: any;
@@ -64,12 +66,34 @@ export default function ApprovalsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
+  const [, setLocation] = useLocation();
 
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
 
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Verificar si el usuario tiene permiso para ver esta página
+  if (!user || !["admin", "manager"].includes(user.role)) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+          <AlertCircle className="h-16 w-16 text-destructive mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Acceso Denegado</h1>
+          <p className="text-muted-foreground mb-4">
+            No tienes permisos para acceder a esta sección. Solo los administradores y managers pueden gestionar aprobaciones.
+          </p>
+          <button
+            onClick={() => setLocation("/dashboard")}
+            className="text-primary hover:underline"
+          >
+            Volver al Dashboard
+          </button>
+        </div>
+      </MainLayout>
+    );
+  }
 
   // Get pending tasks count for the badge in the sidebar
   const { data: sidebarTasks } = useQuery({
