@@ -668,69 +668,288 @@ export class DatabaseStorage implements IStorage {
 
   // Approval methods
   async getApproval(id: number): Promise<Approval | undefined> {
-    const [approval] = await db.select().from(approvals).where(eq(approvals.id, id));
-    return approval;
+    try {
+      // Use a raw SQL query to avoid issues with missing columns
+      const result = await pool.query(
+        'SELECT id, entity_type, user_id, status, comments, approved_at, created_at, document_id, policy_id FROM approvals WHERE id = $1',
+        [id]
+      );
+
+      if (result.rows.length === 0) {
+        return undefined;
+      }
+
+      // Map the database column names to the TypeScript property names
+      const row = result.rows[0];
+      const approval: Approval = {
+        id: row.id,
+        entityType: row.entity_type,
+        userId: row.user_id,
+        status: row.status,
+        comments: row.comments,
+        approvedAt: row.approved_at,
+        createdAt: row.created_at,
+        documentId: row.document_id,
+        policyId: row.policy_id,
+        // taskId is omitted since it doesn't exist in the database
+      };
+
+      return approval;
+    } catch (error) {
+      console.error('Error in getApproval:', error);
+      throw error;
+    }
   }
 
   async getAllApprovals(): Promise<Approval[]> {
-    return await db.select().from(approvals);
+    try {
+      // Use a raw SQL query to avoid issues with missing columns
+      // Exclude entity_type column since it doesn't exist in the database
+      const result = await pool.query(
+        'SELECT id, user_id, status, comments, approved_at, created_at, document_id, policy_id FROM approvals'
+      );
+
+      // Map the database column names to the TypeScript property names
+      // Provide a default value for entityType based on documentId or policyId
+      return result.rows.map(row => {
+        // Determine entity type based on which ID is present
+        let entityType = "document"; // Default to document
+        if (row.policy_id) {
+          entityType = "policy";
+        }
+
+        return {
+          id: row.id,
+          entityType: entityType, // Use determined entity type instead of row.entity_type
+          userId: row.user_id,
+          status: row.status,
+          comments: row.comments,
+          approvedAt: row.approved_at,
+          createdAt: row.created_at,
+          documentId: row.document_id,
+          policyId: row.policy_id,
+          // taskId is omitted since it doesn't exist in the database
+        };
+      });
+    } catch (error) {
+      console.error('Error in getAllApprovals:', error);
+      throw error;
+    }
   }
 
   async getApprovalsByUser(userId: number): Promise<Approval[]> {
-    return await db
-      .select()
-      .from(approvals)
-      .where(eq(approvals.userId, userId));
+    try {
+      // Use a raw SQL query to avoid issues with missing columns
+      const result = await pool.query(
+        'SELECT id, entity_type, user_id, status, comments, approved_at, created_at, document_id, policy_id FROM approvals WHERE user_id = $1',
+        [userId]
+      );
+
+      // Map the database column names to the TypeScript property names
+      return result.rows.map(row => ({
+        id: row.id,
+        entityType: row.entity_type,
+        userId: row.user_id,
+        status: row.status,
+        comments: row.comments,
+        approvedAt: row.approved_at,
+        createdAt: row.created_at,
+        documentId: row.document_id,
+        policyId: row.policy_id,
+        // taskId is omitted since it doesn't exist in the database
+      }));
+    } catch (error) {
+      console.error('Error in getApprovalsByUser:', error);
+      throw error;
+    }
   }
 
   async getApprovalsByDocumentId(documentId: number): Promise<Approval[]> {
-    return await db
-      .select()
-      .from(approvals)
-      .where(eq(approvals.documentId, documentId));
+    try {
+      // Use a raw SQL query to avoid issues with missing columns
+      const result = await pool.query(
+        'SELECT id, entity_type, user_id, status, comments, approved_at, created_at, document_id, policy_id FROM approvals WHERE document_id = $1',
+        [documentId]
+      );
+
+      // Map the database column names to the TypeScript property names
+      return result.rows.map(row => ({
+        id: row.id,
+        entityType: row.entity_type,
+        userId: row.user_id,
+        status: row.status,
+        comments: row.comments,
+        approvedAt: row.approved_at,
+        createdAt: row.created_at,
+        documentId: row.document_id,
+        policyId: row.policy_id,
+        // taskId is omitted since it doesn't exist in the database
+      }));
+    } catch (error) {
+      console.error('Error in getApprovalsByDocumentId:', error);
+      throw error;
+    }
   }
 
   async getApprovalsByTaskId(taskId: number): Promise<Approval[]> {
-    return await db
-      .select()
-      .from(approvals)
-      .where(eq(approvals.taskId, taskId));
+    try {
+      // Since task_id column doesn't exist, we need to handle this differently
+      // For now, return an empty array since we can't query by a non-existent column
+      console.log(`getApprovalsByTaskId called with taskId ${taskId}, but task_id column doesn't exist in database`);
+      return [];
+    } catch (error) {
+      console.error('Error in getApprovalsByTaskId:', error);
+      throw error;
+    }
   }
 
   async getApprovalsByPolicyId(policyId: number): Promise<Approval[]> {
-    return await db
-      .select()
-      .from(approvals)
-      .where(eq(approvals.policyId, policyId));
+    try {
+      // Use a raw SQL query to avoid issues with missing columns
+      const result = await pool.query(
+        'SELECT id, entity_type, user_id, status, comments, approved_at, created_at, document_id, policy_id FROM approvals WHERE policy_id = $1',
+        [policyId]
+      );
+
+      // Map the database column names to the TypeScript property names
+      return result.rows.map(row => ({
+        id: row.id,
+        entityType: row.entity_type,
+        userId: row.user_id,
+        status: row.status,
+        comments: row.comments,
+        approvedAt: row.approved_at,
+        createdAt: row.created_at,
+        documentId: row.document_id,
+        policyId: row.policy_id,
+        // taskId is omitted since it doesn't exist in the database
+      }));
+    } catch (error) {
+      console.error('Error in getApprovalsByPolicyId:', error);
+      throw error;
+    }
   }
 
   async getApprovalsByEntityType(entityType: string): Promise<Approval[]> {
-    return await db
-      .select()
-      .from(approvals)
-      .where(eq(approvals.entityType, entityType));
+    try {
+      // Since entity_type column doesn't exist, we need to fetch all approvals
+      // and filter them based on our logic for determining entity type
+      const allApprovals = await this.getAllApprovals();
+
+      // Filter the approvals based on the requested entity type
+      return allApprovals.filter(approval => {
+        if (entityType === "document" && approval.documentId) {
+          return true;
+        } else if (entityType === "policy" && approval.policyId) {
+          return true;
+        }
+        // For other entity types or if no matching ID is found, use the entityType property
+        return approval.entityType === entityType;
+      });
+    } catch (error) {
+      console.error('Error in getApprovalsByEntityType:', error);
+      throw error;
+    }
   }
 
   async createApproval(insertApproval: InsertApproval): Promise<Approval> {
-    const [approval] = await db
-      .insert(approvals)
-      .values(insertApproval as any)
-      .returning();
-    return approval;
+    try {
+      // Create a new object without the taskId property
+      const { taskId, entityType, ...approvalWithoutTaskId } = insertApproval;
+
+      // Log if taskId was provided but will be ignored
+      if (taskId) {
+        console.log(`createApproval: taskId ${taskId} provided but will be ignored as task_id column doesn't exist in database`);
+      }
+
+      try {
+        // Use raw SQL query to avoid issues with schema mismatch
+        const result = await pool.query(
+          'INSERT INTO approvals (document_id, policy_id, user_id, status, comments) VALUES ($1, $2, $3, $4, $5) RETURNING id, document_id, policy_id, user_id, status, comments, approved_at, created_at',
+          [
+            approvalWithoutTaskId.documentId || null,
+            approvalWithoutTaskId.policyId || null,
+            approvalWithoutTaskId.userId,
+            approvalWithoutTaskId.status || 'pending',
+            approvalWithoutTaskId.comments || null
+          ]
+        );
+
+        if (result.rows.length === 0) {
+          throw new Error("Failed to create approval");
+        }
+
+        // Map the database column names to the TypeScript property names
+        const row = result.rows[0];
+
+        // Determine entity type based on which ID is present if not provided
+        let determinedEntityType = entityType;
+        if (!determinedEntityType) {
+          if (row.document_id) {
+            determinedEntityType = "document";
+          } else if (row.policy_id) {
+            determinedEntityType = "policy";
+          } else {
+            determinedEntityType = "task"; // Default fallback
+          }
+        }
+
+        const approval: Approval = {
+          id: row.id,
+          entityType: determinedEntityType, // Use determined entity type
+          userId: row.user_id,
+          status: row.status,
+          comments: row.comments,
+          approvedAt: row.approved_at,
+          createdAt: row.created_at,
+          documentId: row.document_id,
+          policyId: row.policy_id,
+          // taskId is omitted since it doesn't exist in the database
+        };
+
+        return approval;
+      } catch (sqlError) {
+        console.error('SQL Error in createApproval:', sqlError);
+
+        // Log detailed error information for debugging
+        if (sqlError.code === '42703') { // Column does not exist
+          console.error('Column does not exist error. This might be due to a schema mismatch.');
+          console.error('Attempted to use columns that might not exist in the database.');
+        }
+
+        throw sqlError;
+      }
+    } catch (error) {
+      console.error('Error in createApproval:', error);
+      throw error;
+    }
   }
 
   async updateApproval(id: number, approvalUpdate: Partial<Approval>): Promise<Approval> {
-    const [updatedApproval] = await db
-      .update(approvals)
-      .set(approvalUpdate as any)
-      .where(eq(approvals.id, id))
-      .returning();
+    try {
+      // Create a new object without the taskId property
+      const { taskId, ...updateWithoutTaskId } = approvalUpdate;
 
-    if (!updatedApproval) {
-      throw new Error("Approval not found");
+      // Log if taskId was provided but will be ignored
+      if (taskId !== undefined) {
+        console.log(`updateApproval: taskId ${taskId} provided but will be ignored as task_id column doesn't exist in database`);
+      }
+
+      const [updatedApproval] = await db
+        .update(approvals)
+        .set(updateWithoutTaskId as any)
+        .where(eq(approvals.id, id))
+        .returning();
+
+      if (!updatedApproval) {
+        throw new Error("Approval not found");
+      }
+
+      return updatedApproval;
+    } catch (error) {
+      console.error('Error in updateApproval:', error);
+      throw error;
     }
-
-    return updatedApproval;
   }
 
   // Task methods

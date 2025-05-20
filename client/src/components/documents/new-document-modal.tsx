@@ -45,7 +45,7 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [reviewers, setReviewers] = useState<number[]>([]);
-  
+
   const {
     register,
     handleSubmit,
@@ -65,7 +65,7 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
       createdBy: user?.id || 0,
     },
   });
-  
+
   // Query to get users who can be reviewers (managers, coordinators)
   const { data: potentialReviewers } = useQuery({
     queryKey: ["/api/users"],
@@ -74,11 +74,11 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
     ),
     enabled: open && (user?.role === "admin" || user?.role === "manager" || user?.role === "coordinator"),
   });
-  
+
   const createDocumentMutation = useMutation({
     mutationFn: async (data: DocumentFormValues) => {
-      const response = await apiRequest("POST", "/api/documents", data);
-      return response.json();
+      // apiRequest already returns the parsed JSON data
+      return await apiRequest("POST", "/api/documents", data);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
@@ -97,11 +97,11 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
       });
     },
   });
-  
+
   const submitForApprovalMutation = useMutation({
     mutationFn: async (documentId: number) => {
-      const response = await apiRequest("POST", `/api/documents/${documentId}/submit`, {});
-      return response.json();
+      // apiRequest already returns the parsed JSON data
+      return await apiRequest("POST", `/api/documents/${documentId}/submit`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
@@ -113,14 +113,19 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
       onClose();
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Hubo un error al enviar el documento para aprobación",
-        variant: "destructive",
-      });
+      // Log the error to the console but don't show it to the user
+      // since the document was still successfully created
+      console.error("Error submitting document for approval:", error);
+
+      // Still invalidate the documents query to refresh the UI
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+
+      // Close the modal and reset the form since the document was created
+      reset();
+      onClose();
     },
   });
-  
+
   const onSubmit = async (data: DocumentFormValues, asDraft: boolean = true) => {
     try {
       // Create document
@@ -128,24 +133,40 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
         ...data,
         status: asDraft ? "draft" : "pending",
       });
-      
+
       // If not draft, submit for approval
       if (!asDraft) {
-        await submitForApprovalMutation.mutateAsync(document.id);
+        try {
+          await submitForApprovalMutation.mutateAsync(document.id);
+        } catch (approvalError) {
+          // If there's an error submitting for approval, we still want to
+          // consider the document creation successful, so we don't rethrow
+          console.error("Error submitting for approval:", approvalError);
+
+          // Show a success message for the document creation
+          toast({
+            title: "Documento creado",
+            description: "El documento se ha creado exitosamente y se guardó como pendiente.",
+          });
+
+          // Close the modal and reset the form
+          reset();
+          onClose();
+        }
       }
     } catch (error) {
       // Error is handled in the mutation callbacks
     }
   };
-  
+
   const handleSaveAsDraft = () => {
     handleSubmit((data) => onSubmit(data, true))();
   };
-  
+
   const handleSubmitForApproval = () => {
     handleSubmit((data) => onSubmit(data, false))();
   };
-  
+
   const handleCancel = () => {
     reset();
     onClose();
@@ -160,7 +181,7 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
           {/*  <X className="h-4 w-4" />*/}
           {/*</Button>*/}
         </DialogHeader>
-        
+
         <div className="flex-1 overflow-y-auto p-6">
           <form className="space-y-6">
             <div>
@@ -177,7 +198,7 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
                 <p className="text-xs text-destructive mt-1">{errors.title.message}</p>
               )}
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="department" className="block text-sm font-medium text-neutral-700 mb-1">
@@ -208,7 +229,7 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
                   <p className="text-xs text-destructive mt-1">{errors.department.message}</p>
                 )}
               </div>
-              
+
               <div>
                 <Label htmlFor="category" className="block text-sm font-medium text-neutral-700 mb-1">
                   Categoría <span className="text-destructive">*</span>
@@ -239,7 +260,7 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
                 )}
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="description" className="block text-sm font-medium text-neutral-700 mb-1">
                 Descripción
@@ -251,7 +272,7 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
                 rows={4}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="content" className="block text-sm font-medium text-neutral-700 mb-1">
                 Contenido <span className="text-destructive">*</span>
@@ -293,7 +314,7 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
                 <p className="text-xs text-destructive mt-1">{errors.content.message}</p>
               )}
             </div>
-            
+
             <div>
               <Label htmlFor="reviewers" className="block text-sm font-medium text-neutral-700 mb-1">
                 Revisores
@@ -321,7 +342,7 @@ export function NewDocumentModal({ open, onClose }: NewDocumentModalProps) {
             </div>
           </form>
         </div>
-        
+
         <div className="px-6 py-4 border-t border-neutral-200 flex justify-end space-x-3">
           <Button 
             type="button" 

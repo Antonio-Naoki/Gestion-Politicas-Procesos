@@ -1,16 +1,28 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, Download, User, SendHorizonal } from "lucide-react";
+import { Eye, Download, User, SendHorizonal, PlayCircle, CheckCircle, Trash2, AlertCircle } from "lucide-react";
 import { Document, User as UserType } from "@shared/schema";
+import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 interface DocumentCardProps {
   document: Document & { createdByUser?: Partial<UserType> };
   onView: (document: Document) => void;
   showSubmitButton?: boolean;
   onSubmit?: () => void;
+  onStartProgress?: () => void;
+  onComplete?: () => void;
+  onDelete?: (document: Document) => void;
 }
 
-export function DocumentCard({ document, onView, showSubmitButton, onSubmit }: DocumentCardProps) {
+export function DocumentCard({ document, onView, showSubmitButton, onSubmit, onStartProgress, onComplete, onDelete }: DocumentCardProps) {
+  const { user } = useAuth();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  // Check if user can update document status
+  const canUpdateDocument = user?.id === document.createdBy || 
+                           ["admin", "manager", "coordinator"].includes(user?.role || "");
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "approved":
@@ -97,10 +109,22 @@ export function DocumentCard({ document, onView, showSubmitButton, onSubmit }: D
             >
               <Download className="h-3.5 w-3.5 text-neutral-500" />
             </Button>
+            {onDelete && canUpdateDocument && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => setIsDeleteDialogOpen(true)}
+                title="Eliminar documento"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            )}
           </div>
         </div>
 
-        {showSubmitButton && onSubmit && (
+        {/* Action buttons based on document status */}
+        {document.status === "draft" && showSubmitButton && onSubmit && (
           <Button 
             variant="outline" 
             size="sm" 
@@ -111,7 +135,67 @@ export function DocumentCard({ document, onView, showSubmitButton, onSubmit }: D
             Enviar para aprobación
           </Button>
         )}
+
+        {document.status === "pending" && canUpdateDocument && onStartProgress && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full mt-3 text-xs text-primary border-primary hover:bg-primary/10"
+            onClick={onStartProgress}
+          >
+            <PlayCircle className="h-3.5 w-3.5 mr-1" />
+            Iniciar Progreso
+          </Button>
+        )}
+
+        {document.status === "in_progress" && canUpdateDocument && onComplete && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full mt-3 text-xs text-success border-success hover:bg-success/10"
+            onClick={onComplete}
+          >
+            <CheckCircle className="h-3.5 w-3.5 mr-1" />
+            Completar
+          </Button>
+        )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {onDelete && (
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Confirmar eliminación</DialogTitle>
+              <DialogDescription>
+                ¿Está seguro que desea eliminar el documento "{document.title}"? Esta acción no se puede deshacer.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center space-x-2 text-warning mt-2">
+              <AlertCircle className="h-5 w-5" />
+              <p className="text-sm">Esta acción eliminará permanentemente el documento.</p>
+            </div>
+            <DialogFooter className="mt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsDeleteDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={() => {
+                  onDelete(document);
+                  setIsDeleteDialogOpen(false);
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Eliminar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Card>
   );
 }

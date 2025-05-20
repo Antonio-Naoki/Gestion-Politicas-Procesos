@@ -213,24 +213,24 @@ export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
               >
                 <Info className="h-3.5 w-3.5 text-primary" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => setIsRejectDialogOpen(true)}
-                title="Rechazar"
-              >
-                <XCircle className="h-3.5 w-3.5 text-destructive" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => setIsApproveDialogOpen(true)}
-                title="Aprobar"
-              >
-                <CheckCircle className="h-3.5 w-3.5 text-success" />
-              </Button>
+              {/*<Button*/}
+              {/*  variant="ghost"*/}
+              {/*  size="icon"*/}
+              {/*  className="h-6 w-6"*/}
+              {/*  onClick={() => setIsRejectDialogOpen(true)}*/}
+              {/*  title="Rechazar"*/}
+              {/*>*/}
+              {/*  <XCircle className="h-3.5 w-3.5 text-destructive" />*/}
+              {/*</Button>*/}
+              {/*<Button*/}
+              {/*  variant="ghost"*/}
+              {/*  size="icon"*/}
+              {/*  className="h-6 w-6"*/}
+              {/*  onClick={() => setIsApproveDialogOpen(true)}*/}
+              {/*  title="Aprobar"*/}
+              {/*>*/}
+              {/*  <CheckCircle className="h-3.5 w-3.5 text-success" />*/}
+              {/*</Button>*/}
             </div>
           ) : (
             <Button

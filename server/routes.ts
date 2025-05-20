@@ -480,41 +480,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
           } else if (approval.entityType === "policy" && approval.policyId) {
-            const policy = await storage.getDocument(approval.policyId);
+            try {
+              const policy = await storage.getDocument(approval.policyId);
 
-            if (policy) {
-              entityTitle = policy.title;
-              activityDetails = { ...activityDetails, policyTitle: policy.title };
+              if (policy) {
+                entityTitle = policy.title;
+                activityDetails = { ...activityDetails, policyTitle: policy.title };
 
-              console.log(`Processing policy ID: ${approval.policyId}, title: ${policy.title}`);
+                console.log(`Processing policy ID: ${approval.policyId}, title: ${policy.title}`);
 
-              // Update policy status if all approvals are done
-              if (status === "approved") {
-                const allApprovals = await storage.getApprovalsByPolicyId(approval.policyId);
-                const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
+                // Update policy status if all approvals are done
+                if (status === "approved") {
+                  const allApprovals = await storage.getApprovalsByPolicyId(approval.policyId);
+                  const allApproved = allApprovals.every(a => a.status === "approved" || a.id === approvalId);
 
-                if (allApproved) {
+                  if (allApproved) {
+                    await storage.updateDocument(approval.policyId, {
+                      ...policy,
+                      status: "approved"
+                    });
+                    console.log(`Policy ID: ${approval.policyId} marked as approved`);
+                  }
+                } else if (status === "rejected") {
+                  // If rejected, update policy status
                   await storage.updateDocument(approval.policyId, {
                     ...policy,
-                    status: "approved"
+                    status: "rejected"
                   });
-                  console.log(`Policy ID: ${approval.policyId} marked as approved`);
+                  console.log(`Policy ID: ${approval.policyId} marked as rejected`);
+                } else if (status === "in_progress") {
+                  // If in progress, update policy status
+                  await storage.updateDocument(approval.policyId, {
+                    ...policy,
+                    status: "in_progress"
+                  });
+                  console.log(`Policy ID: ${approval.policyId} marked as in progress`);
                 }
-              } else if (status === "rejected") {
-                // If rejected, update policy status
-                await storage.updateDocument(approval.policyId, {
-                  ...policy,
-                  status: "rejected"
-                });
-                console.log(`Policy ID: ${approval.policyId} marked as rejected`);
-              } else if (status === "in_progress") {
-                // If in progress, update policy status
-                await storage.updateDocument(approval.policyId, {
-                  ...policy,
-                  status: "in_progress"
-                });
-                console.log(`Policy ID: ${approval.policyId} marked as in progress`);
+              } else {
+                console.log(`Policy ID: ${approval.policyId} not found, but approval will still be updated`);
+                activityDetails = { ...activityDetails, policyId: approval.policyId, policyNotFound: true };
               }
+            } catch (policyError) {
+              console.error(`Error processing policy for approval ${approvalId}:`, policyError);
+              activityDetails = { ...activityDetails, policyId: approval.policyId, policyError: true };
             }
           } else {
             console.log(`Unknown entity type: ${approval.entityType} for approval ID: ${approvalId}`);
