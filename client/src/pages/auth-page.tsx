@@ -117,10 +117,15 @@ export default function AuthPage() {
                 <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
                 <TabsTrigger value="register">Registrarse</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="login">
                 <form onSubmit={loginForm.handleSubmit(onLoginSubmit)}>
                   <div className="grid gap-4">
+                    {loginMutation.isError && (
+                      <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
+                        <p>{loginMutation.error?.message || "Error al iniciar sesión. Verifique sus credenciales."}</p>
+                      </div>
+                    )}
                     <div className="grid gap-2">
                       <Label htmlFor="login-username">Usuario</Label>
                       <Input
@@ -128,6 +133,7 @@ export default function AuthPage() {
                         placeholder="Ingrese su usuario"
                         {...loginForm.register("username")}
                         className={loginForm.formState.errors.username ? "border-destructive" : ""}
+                        disabled={loginMutation.isPending}
                       />
                       {loginForm.formState.errors.username && (
                         <p className="text-xs text-destructive mt-1">
@@ -143,6 +149,7 @@ export default function AuthPage() {
                         placeholder="Ingrese su contraseña"
                         {...loginForm.register("password")}
                         className={loginForm.formState.errors.password ? "border-destructive" : ""}
+                        disabled={loginMutation.isPending}
                       />
                       {loginForm.formState.errors.password && (
                         <p className="text-xs text-destructive mt-1">
@@ -167,7 +174,7 @@ export default function AuthPage() {
                   </div>
                 </form>
               </TabsContent>
-              
+
               <TabsContent value="register">
                 <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)}>
                   <div className="grid gap-4">
@@ -332,7 +339,7 @@ export default function AuthPage() {
           </CardFooter>
         </Card>
       </div>
-      
+
       <div className="hidden lg:flex flex-col justify-center p-12 bg-primary text-white">
         <div className="max-w-md mx-auto">
           <h1 className="text-3xl font-bold mb-6">Sistema de Gestión de Procesos y Políticas</h1>

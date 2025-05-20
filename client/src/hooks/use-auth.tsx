@@ -34,8 +34,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      try {
+        // apiRequest already returns the parsed JSON data
+        return await apiRequest("POST", "/api/login", credentials);
+      } catch (error) {
+        // Extract the error message from the API response
+        const message = error instanceof Error 
+          ? error.message.includes(':') 
+            ? error.message.split(':')[1].trim() 
+            : error.message
+          : "Error desconocido al iniciar sesión";
+
+        throw new Error(message);
+      }
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
@@ -47,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onError: (error: Error) => {
       toast({
         title: "Error de inicio de sesión",
-        description: error.message,
+        description: error.message || "No se pudo iniciar sesión. Verifique sus credenciales.",
         variant: "destructive",
       });
     },
@@ -55,8 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (credentials: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", credentials);
-      return await res.json();
+      // apiRequest already returns the parsed JSON data
+      return await apiRequest("POST", "/api/register", credentials);
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
