@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -11,13 +11,15 @@ import {
   Calendar, 
   User, 
   PlayCircle,
-  XCircle
+  XCircle,
+  Trash2
 } from "lucide-react";
 import { useState } from "react";
 import { Task } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useNotificationTrigger } from "@/hooks/use-notification-trigger";
 
 // Define a local UserInfo type for component use
 interface UserInfo {
@@ -41,15 +43,20 @@ interface TaskItemProps {
 export function TaskItem({ task }: TaskItemProps) {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [statusValue, setStatusValue] = useState<string>(task.status);
   const [statusComment, setStatusComment] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { toast } = useToast();
   const { user } = useAuth();
+  const { triggerNotification } = useNotificationTrigger();
 
   const canUpdateTask = user?.id === task.assignedTo || 
                         ["admin", "manager", "coordinator"].includes(user?.role || "");
+  
+  const canDeleteTask = user?.id === task.assignedBy || 
+                       ["admin", "manager"].includes(user?.role || "");
 
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
@@ -147,6 +154,38 @@ export function TaskItem({ task }: TaskItemProps) {
     }
   };
 
+  const handleDeleteTask = async () => {
+    try {
+      setIsProcessing(true);
+      await apiRequest("DELETE", `/api/tasks/${task.id}`);
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+
+      // Notify the assigned user
+      triggerNotification(
+        "task",
+        "Tarea eliminada",
+        `La tarea "${task.title}" ha sido eliminada`,
+        `/tasks`
+      );
+
+      toast({
+        title: "Tarea eliminada",
+        description: "La tarea ha sido eliminada exitosamente",
+      });
+
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error al eliminar tarea",
+        description: error instanceof Error ? error.message : "Ha ocurrido un error al eliminar la tarea",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "completed";
 
   return (
@@ -200,17 +239,7 @@ export function TaskItem({ task }: TaskItemProps) {
           )}
         </CardContent>
         <CardFooter className="pt-2">
-          <div className="flex justify-end w-full space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-neutral-500"
-              onClick={() => setIsDetailsDialogOpen(true)}
-            >
-              <Info className="h-4 w-4 mr-1" />
-              Detalles
-            </Button>
-
+          <div className="flex flex-wrap gap-2 justify-end w-full">
             {canUpdateTask && task.status !== "completed" && task.status !== "canceled" && (
               <>
                 <Button
@@ -239,6 +268,30 @@ export function TaskItem({ task }: TaskItemProps) {
                 </Button>
               </>
             )}
+
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-neutral-500"
+                onClick={() => setIsDetailsDialogOpen(true)}
+              >
+                <Info className="h-4 w-4 mr-1" />
+                Detalles
+              </Button>
+
+              {canDeleteTask && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive border-destructive hover:bg-destructive/10"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Eliminar
+                </Button>
+              )}
+            </div>
           </div>
         </CardFooter>
       </Card>
@@ -379,6 +432,44 @@ export function TaskItem({ task }: TaskItemProps) {
                 </span>
               ) : (
                 <span>Actualizar Estado</span>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Eliminar Tarea</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isProcessing}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteTask}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Eliminando...
+                </span>
+              ) : (
+                <span>Eliminar Tarea</span>
               )}
             </Button>
           </DialogFooter>
