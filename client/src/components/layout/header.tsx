@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Menu, Search, Bell, HelpCircle, User, ChevronDown, ChevronUp, Book, MessageCircle, FileQuestion } from "lucide-react";
+import { Menu, Search, Bell, HelpCircle, User, ChevronDown, ChevronUp, Book, MessageCircle, FileQuestion, BarChart3, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +27,13 @@ export function Header({ toggleSidebar, notificationCount = 0 }: HeaderProps) {
   const [expandedSections, setExpandedSections] = useState({
     howToUse: true,
     commonQuestions: false,
-    faq: false
+    faq: false,
+    charts: false,
+    roles: false
   });
   const { user } = useAuth();
 
-  const toggleSection = (section: 'howToUse' | 'commonQuestions' | 'faq') => {
+  const toggleSection = (section: 'howToUse' | 'commonQuestions' | 'faq' | 'charts' | 'roles') => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -229,6 +231,66 @@ export function Header({ toggleSidebar, notificationCount = 0 }: HeaderProps) {
                         <h4 className="font-medium">¿Puedo exportar reportes?</h4>
                         <p className="text-sm mt-1">Sí, en la sección de Reportes puede generar y exportar diferentes tipos de informes en formatos PDF, Excel o CSV para su análisis posterior.</p>
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Cómo leer las gráficas de reportes */}
+                <div className="border rounded-lg overflow-hidden">
+                  <button 
+                    className="w-full flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
+                    onClick={() => toggleSection('charts')}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <BarChart3 className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-medium">Cómo leer las gráficas de reportes</h3>
+                    </div>
+                    {expandedSections.charts ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </button>
+                  {expandedSections.charts && (
+                    <div className="p-4 space-y-3 border-t">
+                      <p>Las gráficas de reportes muestran visualmente los datos clave del sistema. Aquí algunos consejos para interpretarlas:</p>
+                      <ul className="list-disc pl-5 space-y-2">
+                        <li><strong>Colores:</strong> Cada color representa una categoría, estado o prioridad diferente. Consulta la leyenda debajo de cada gráfica.</li>
+                        <li><strong>Barras y sectores:</strong> El tamaño de la barra o sector indica la cantidad relativa de cada elemento.</li>
+                        <li><strong>Tooltip:</strong> Al pasar el cursor sobre una barra o sector, verás el valor exacto y el porcentaje.</li>
+                        <li><strong>Ejes:</strong> El eje X muestra las categorías o períodos, el eje Y muestra los valores numéricos.</li>
+                        <li>Las gráficas circulares (pie) muestran proporciones, las de barras muestran comparaciones y las de línea muestran tendencias en el tiempo.</li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Roles de usuario en el sistema */}
+                <div className="border rounded-lg overflow-hidden">
+                  <button 
+                    className="w-full flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
+                    onClick={() => toggleSection('roles')}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-medium">Roles de usuario en el sistema</h3>
+                    </div>
+                    {expandedSections.roles ? (
+                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </button>
+                  {expandedSections.roles && (
+                    <div className="p-4 space-y-3 border-t">
+                      <p>El sistema cuenta con diferentes roles de usuario, cada uno con permisos específicos:</p>
+                      <ul className="list-disc pl-5 space-y-2">
+                        <li><strong>Administrador:</strong> Acceso total a todas las funciones, gestión de usuarios, configuración y reportes.</li>
+                        <li><strong>Manager:</strong> Puede aprobar documentos, asignar tareas y ver reportes.</li>
+                        <li><strong>Coordinador:</strong> Puede crear y editar documentos, asignar tareas y ver métricas.</li>
+                        <li><strong>Usuario:</strong> Puede ver y trabajar en sus tareas, consultar documentos y recibir notificaciones.</li>
+                      </ul>
+                      <p>Los permisos pueden personalizarse según las necesidades de la organización.</p>
                     </div>
                   )}
                 </div>

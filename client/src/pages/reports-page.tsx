@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useRef } from "react";
 import { Document, Approval, Task } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, FileText, ClipboardList, CheckCircle, Loader2 } from "lucide-react";
 
 ChartJS.register(
   CategoryScale,
@@ -38,6 +38,7 @@ export default function ReportsPage() {
   const [timePeriod, setTimePeriod] = useState("month");
   const [activeTab, setActiveTab] = useState("documents");
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingAll, setIsExportingAll] = useState(false);
 
   // References to chart containers
   const documentsChartRef = useRef(null);
@@ -351,6 +352,141 @@ export default function ReportsPage() {
     }
   };
 
+  // Function to export all reports to PDF
+  const exportAllToPdf = async () => {
+    setIsExportingAll(true);
+
+    try {
+      const { jsPDF, html2canvas } = await loadPdfLibraries();
+
+      if (!jsPDF || !html2canvas) {
+        alert('Error loading PDF libraries. Please try again.');
+        setIsExportingAll(false);
+        return;
+      }
+
+      const doc = new jsPDF();
+      let yOffset = 20;
+
+      // Título del reporte
+      doc.setFontSize(20);
+      doc.text("Reporte General del Sistema", 105, yOffset, { align: "center" });
+      yOffset += 20;
+
+      // Fecha del reporte
+      doc.setFontSize(12);
+      doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 105, yOffset, { align: "center" });
+      yOffset += 20;
+
+      // Resumen ejecutivo (3 líneas)
+      doc.setFontSize(14);
+      doc.text("Resumen Ejecutivo", 20, yOffset);
+      yOffset += 10;
+
+      doc.setFontSize(12);
+      const summary = [
+        `Total de documentos: ${documents?.length || 0}`,
+        `Total de tareas: ${tasks?.length || 0}`,
+        `Total de aprobaciones: ${approvals?.length || 0}`
+      ];
+
+      summary.forEach(line => {
+        doc.text(line, 20, yOffset);
+        yOffset += 10;
+      });
+      yOffset += 10;
+
+      // Gráficas
+      const charts = document.querySelectorAll('.chart-container');
+      for (let i = 0; i < charts.length; i++) {
+        try {
+          const chart = charts[i];
+          const canvas = await html2canvas(chart as HTMLElement);
+          const imgData = canvas.toDataURL('image/png');
+          
+          // Añadir nueva página si es necesario
+          if (yOffset > 250) {
+            doc.addPage();
+            yOffset = 20;
+          }
+
+          // Título de la gráfica
+          doc.setFontSize(14);
+          doc.text(chart.getAttribute('data-title') || `Gráfica ${i + 1}`, 20, yOffset);
+          yOffset += 10;
+
+          // Añadir la gráfica
+          const imgWidth = 170;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          doc.addImage(imgData, 'PNG', 20, yOffset, imgWidth, imgHeight);
+          yOffset += imgHeight + 20;
+        } catch (error) {
+          console.error(`Error al procesar la gráfica ${i + 1}:`, error);
+          continue;
+        }
+      }
+
+      // Tablas de datos
+      doc.addPage();
+      yOffset = 20;
+
+      // Tabla de documentos por departamento
+      if (documents && documents.length > 0) {
+        doc.setFontSize(14);
+        doc.text("Documentos por Departamento", 20, yOffset);
+        yOffset += 10;
+
+        const docData = documents.map(item => [item.department || 'Sin Departamento', '1']);
+        doc.autoTable({
+          startY: yOffset,
+          head: [['Departamento', 'Cantidad']],
+          body: docData,
+          theme: 'grid'
+        });
+        yOffset = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      // Tabla de tareas por estado
+      if (tasks && tasks.length > 0) {
+        doc.setFontSize(14);
+        doc.text("Tareas por Estado", 20, yOffset);
+        yOffset += 10;
+
+        const taskData = tasks.map(item => [item.status || 'Sin Estado', '1']);
+        doc.autoTable({
+          startY: yOffset,
+          head: [['Estado', 'Cantidad']],
+          body: taskData,
+          theme: 'grid'
+        });
+        yOffset = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      // Tabla de aprobaciones por estado
+      if (approvals && approvals.length > 0) {
+        doc.setFontSize(14);
+        doc.text("Aprobaciones por Estado", 20, yOffset);
+        yOffset += 10;
+
+        const approvalData = approvals.map(item => [item.status || 'Sin Estado', '1']);
+        doc.autoTable({
+          startY: yOffset,
+          head: [['Estado', 'Cantidad']],
+          body: approvalData,
+          theme: 'grid'
+        });
+      }
+
+      // Guardar el PDF
+      doc.save(`reporte_general_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error al generar el PDF. Por favor, inténtelo de nuevo.');
+    } finally {
+      setIsExportingAll(false);
+    }
+  };
+
   // Processing data for charts
   const documentsByCategory = {
     labels: ['Proceso', 'Política', 'Instructivo', 'Procedimiento', 'Manual', 'Otro'],
@@ -516,16 +652,29 @@ export default function ReportsPage() {
             <TabsTrigger value="activity">Actividad</TabsTrigger>
           </TabsList>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={exportToPdf} 
-            disabled={isExporting}
-            className="flex items-center gap-1"
-          >
-            <Download className="h-4 w-4" />
-            {isExporting ? 'Exportando...' : 'Exportar PDF'}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exportToPdf} 
+              disabled={isExporting}
+              className="flex items-center gap-1"
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? 'Exportando...' : 'Exportar PDF'}
+            </Button>
+
+            {/* <Button 
+              variant="default" 
+              size="sm" 
+              onClick={exportAllToPdf} 
+              disabled={isExportingAll}
+              className="flex items-center gap-1"
+            >
+              <FileText className="h-4 w-4" />
+              {isExportingAll ? 'Exportando Todo...' : 'Exportar Todo'}
+            </Button> */}
+          </div>
         </div>
 
         <TabsContent value="documents">
