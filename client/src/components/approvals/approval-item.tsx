@@ -12,10 +12,11 @@ import {
   Info
 } from "lucide-react";
 import { useState } from "react";
-import { Approval, Document, User } from "@shared/schema";
+import { Approval, Document, User, Task } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
 
 interface ApprovalItemProps {
   approval: Approval & { 
@@ -26,131 +27,70 @@ interface ApprovalItemProps {
 }
 
 export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
-  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
-  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
-  const [approvalComment, setApprovalComment] = useState("");
-  const [rejectionComment, setRejectionComment] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const { toast } = useToast();
   const { user } = useAuth();
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const { toast } = useToast();
 
   const formattedDate = approval.createdAt ? new Date(approval.createdAt).toLocaleDateString() : "Fecha no disponible";
   const formattedTime = approval.createdAt ? new Date(approval.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Hora no disponible";
 
-  const handleApprove = async () => {
-    try {
-      setIsProcessing(true);
-      console.log(`Sending approval request for approval ID: ${approval.id}`);
-      console.log(`Approval data:`, { status: "approved", comments: approvalComment });
-
-      const response = await apiRequest("POST", `/api/approvals/${approval.id}`, {
-        status: "approved",
-        comments: approvalComment
-      });
-
-      console.log(`Approval response:`, response);
-
-      queryClient.invalidateQueries({ queryKey: ["/api/approvals"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-
-      const entityTypeText = approval.entityType === "document" ? "Documento" : 
-                            approval.entityType === "task" ? "Tarea" : "Política";
-
-      toast({
-        title: `${entityTypeText} aprobado`,
-        description: `El ${entityTypeText.toLowerCase()} ha sido aprobado exitosamente.`,
-      });
-
-      setIsApproveDialogOpen(false);
-      setApprovalComment("");
-    } catch (error) {
-      console.error(`Error approving approval ID: ${approval.id}`, error);
-
-      const entityTypeText = approval.entityType === "document" ? "documento" : 
-                            approval.entityType === "task" ? "tarea" : "política";
-
-      let errorMessage = `Ha ocurrido un error al aprobar el ${entityTypeText}`;
-      if (error instanceof Error) {
-        errorMessage = error.message;
-        console.error(`Error details: ${error.stack || 'No stack trace available'}`);
-      }
-
-      toast({
-        title: "Error al aprobar",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
+  const handleViewDetails = () => {
+    if (approval.entityType === "document" || approval.entityType === "policy") {
+      setShowDocumentModal(true);
+    } else if (approval.entityType === "task") {
+      setShowTaskModal(true);
+    } else {
+      onViewEntity(approval.entityData, approval.entityType);
     }
   };
 
-  const handleReject = async () => {
-    if (!rejectionComment) {
-      toast({
-        title: "Comentario requerido",
-        description: "Por favor, proporcione un comentario explicando el motivo del rechazo.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const renderTaskDetails = (task: Task) => (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold mb-2">{task.title}</h3>
+        <p className="text-sm text-muted-foreground">{task.description || "Sin descripción"}</p>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label className="text-xs text-muted-foreground">Estado</Label>
+          <p className="text-sm font-medium">
+            {task.status === "pending" ? "Pendiente" :
+             task.status === "in_progress" ? "En Progreso" :
+             task.status === "completed" ? "Completada" :
+             "Cancelada"}
+          </p>
+        </div>
+        
+        <div>
+          <Label className="text-xs text-muted-foreground">Prioridad</Label>
+          <p className="text-sm font-medium">
+            {task.priority === "urgent" ? "Urgente" :
+             task.priority === "high" ? "Alta" :
+             task.priority === "medium" ? "Media" :
+             "Normal"}
+          </p>
+        </div>
 
-    try {
-      setIsProcessing(true);
-      console.log(`Sending rejection request for approval ID: ${approval.id}`);
-      console.log(`Rejection data:`, { status: "rejected", comments: rejectionComment });
+        {task.dueDate && (
+          <div>
+            <Label className="text-xs text-muted-foreground">Fecha límite</Label>
+            <p className="text-sm font-medium">
+              {new Date(task.dueDate).toLocaleDateString()}
+            </p>
+          </div>
+        )}
 
-      const response = await apiRequest("POST", `/api/approvals/${approval.id}`, {
-        status: "rejected",
-        comments: rejectionComment
-      });
-
-      console.log(`Rejection response:`, response);
-
-      queryClient.invalidateQueries({ queryKey: ["/api/approvals"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-
-      const entityTypeText = approval.entityType === "document" ? "Documento" : 
-                            approval.entityType === "task" ? "Tarea" : "Política";
-
-      toast({
-        title: `${entityTypeText} rechazado`,
-        description: `El ${entityTypeText.toLowerCase()} ha sido rechazado.`,
-      });
-
-      setIsRejectDialogOpen(false);
-      setRejectionComment("");
-    } catch (error) {
-      console.error(`Error rejecting approval ID: ${approval.id}`, error);
-
-      const entityTypeText = approval.entityType === "document" ? "documento" : 
-                            approval.entityType === "task" ? "tarea" : "política";
-
-      let errorMessage = `Ha ocurrido un error al rechazar el ${entityTypeText}`;
-      if (error instanceof Error) {
-        errorMessage = error.message;
-        console.error(`Error details: ${error.stack || 'No stack trace available'}`);
-      }
-
-      toast({
-        title: "Error al rechazar",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Determine if user can approve this document or policy
-  // Only managers and admins can approve policies, while coordinators can approve other types
-  const canApprove = 
-    approval.entityType === "policy" 
-      ? ["admin", "manager"].includes(user?.role || "") 
-      : ["admin", "manager", "coordinator"].includes(user?.role || "");
+        <div>
+          <Label className="text-xs text-muted-foreground">Fecha de creación</Label>
+          <p className="text-sm font-medium">
+            {new Date(task.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -202,159 +142,45 @@ export function ApprovalItem({ approval, onViewEntity }: ApprovalItemProps) {
             Solicitado: {formattedDate}
           </span>
 
-          {approval.status === "pending" && canApprove ? (
-            <div className="flex space-x-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => onViewEntity(approval.entityData, approval.entityType)}
-                title="Ver detalles"
-              >
-                <Info className="h-3.5 w-3.5 text-primary" />
-              </Button>
-              {/*<Button*/}
-              {/*  variant="ghost"*/}
-              {/*  size="icon"*/}
-              {/*  className="h-6 w-6"*/}
-              {/*  onClick={() => setIsRejectDialogOpen(true)}*/}
-              {/*  title="Rechazar"*/}
-              {/*>*/}
-              {/*  <XCircle className="h-3.5 w-3.5 text-destructive" />*/}
-              {/*</Button>*/}
-              {/*<Button*/}
-              {/*  variant="ghost"*/}
-              {/*  size="icon"*/}
-              {/*  className="h-6 w-6"*/}
-              {/*  onClick={() => setIsApproveDialogOpen(true)}*/}
-              {/*  title="Aprobar"*/}
-              {/*>*/}
-              {/*  <CheckCircle className="h-3.5 w-3.5 text-success" />*/}
-              {/*</Button>*/}
-            </div>
-          ) : (
+          <div className="flex gap-2">
             <Button
               variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => onViewEntity(approval.entityData, approval.entityType)}
-              title="Ver detalles"
+              size="sm"
+              className="text-neutral-500"
+              onClick={handleViewDetails}
             >
-              <Info className="h-3.5 w-3.5 text-primary" />
+              <Info className="h-4 w-4 mr-1" />
+              Detalles
             </Button>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Approve Dialog */}
-      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Aprobar {approval.entityType === "document" ? "Documento" : approval.entityType === "task" ? "Tarea" : "Política"}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="approval-comment">Comentarios (Opcional)</Label>
-              <Textarea
-                id="approval-comment"
-                placeholder="Añadir comentarios sobre la aprobación..."
-                value={approvalComment}
-                onChange={(e) => setApprovalComment(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsApproveDialogOpen(false)}
-              disabled={isProcessing}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleApprove}
-              className="bg-success hover:bg-success/90"
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Procesando...
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <CheckCircle className="h-4 w-4 mr-1" />
-                  Confirmar Aprobación
-                </span>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Document Preview Modal */}
+      {(approval.entityType === "document" || approval.entityType === "policy") && (
+        <DocumentPreviewModal
+          open={showDocumentModal}
+          onClose={() => setShowDocumentModal(false)}
+          document={approval.entityData}
+        />
+      )}
 
-      {/* Reject Dialog */}
-      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Rechazar {approval.entityType === "document" ? "Documento" : approval.entityType === "task" ? "Tarea" : "Política"}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="flex items-center space-x-2 text-warning">
-              <AlertCircle className="h-5 w-5" />
-              <p className="text-sm">Por favor, indique el motivo del rechazo.</p>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="rejection-comment">
-                Comentarios <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id="rejection-comment"
-                placeholder="Añadir comentarios sobre el rechazo..."
-                value={rejectionComment}
-                onChange={(e) => setRejectionComment(e.target.value)}
-                rows={4}
-                className={!rejectionComment ? "border-destructive" : ""}
-              />
-              {!rejectionComment && (
-                <p className="text-xs text-destructive">Es necesario proporcionar un motivo para el rechazo</p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsRejectDialogOpen(false)}
-              disabled={isProcessing}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleReject}
-              variant="destructive"
-              disabled={!rejectionComment || isProcessing}
-            >
-              {isProcessing ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Procesando...
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <XCircle className="h-4 w-4 mr-1" />
-                  Confirmar Rechazo
-                </span>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Task Preview Modal */}
+      {approval.entityType === "task" && (
+        <Dialog open={showTaskModal} onOpenChange={setShowTaskModal}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Detalles de la Tarea</DialogTitle>
+            </DialogHeader>
+            {renderTaskDetails(approval.entityData)}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowTaskModal(false)}>
+                Cerrar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }

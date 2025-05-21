@@ -38,6 +38,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
 
 type ExtendedApproval = Approval & {
   entityData?: any;
@@ -104,17 +105,17 @@ export default function ApprovalsPage() {
   });
 
   // Get all approvals with their documents and creators
-  const { data: allApprovals, isLoading: approvalsLoading } = useQuery<ExtendedApproval[]>({
+  const { data: allApprovals, isLoading: approvalsLoading, refetch: refetchApprovals } = useQuery<ExtendedApproval[]>({
     queryKey: ["/api/approvals"]
   });
 
   // Get all tasks
-  const { data: allTasks, isLoading: tasksLoading } = useQuery<Task[]>({
+  const { data: allTasks, isLoading: tasksLoading, refetch: refetchTasks } = useQuery<Task[]>({
     queryKey: ["/api/tasks"]
   });
 
   // Get all documents (including policies)
-  const { data: allDocuments, isLoading: documentsLoading } = useQuery<Document[]>({
+  const { data: allDocuments, isLoading: documentsLoading, refetch: refetchDocuments } = useQuery<Document[]>({
     queryKey: ["/api/documents"]
   });
 
@@ -238,11 +239,30 @@ export default function ApprovalsPage() {
       setSelectedDocument(entity);
       setShowDocumentModal(true);
     } else if (entityType === "task") {
-      // For tasks, we could implement a task preview modal in the future
-      // For now, just show a toast notification with task details
       toast({
         title: "Detalles de la Tarea",
-        description: `${entity.title} - ${entity.description || "Sin descripción"}`,
+        description: (
+          <div className="mt-2 space-y-2">
+            <p><strong>Título:</strong> {entity.title}</p>
+            <p><strong>Descripción:</strong> {entity.description || "Sin descripción"}</p>
+            <p><strong>Estado:</strong> {
+              entity.status === "pending" ? "Pendiente" :
+              entity.status === "in_progress" ? "En Progreso" :
+              entity.status === "completed" ? "Completada" :
+              "Cancelada"
+            }</p>
+            <p><strong>Prioridad:</strong> {
+              entity.priority === "urgent" ? "Urgente" :
+              entity.priority === "high" ? "Alta" :
+              entity.priority === "medium" ? "Media" :
+              "Normal"
+            }</p>
+            {entity.dueDate && (
+              <p><strong>Fecha límite:</strong> {new Date(entity.dueDate).toLocaleDateString()}</p>
+            )}
+          </div>
+        ),
+        duration: 5000,
       });
     }
   };
