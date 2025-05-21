@@ -647,7 +647,7 @@ export default function ReportsPage() {
         <div className="flex justify-between items-center mb-4">
           <TabsList>
             <TabsTrigger value="documents">Documentos</TabsTrigger>
-            <TabsTrigger value="approvals">Aprobaciones</TabsTrigger>
+            {/* <TabsTrigger value="approvals">Aprobaciones</TabsTrigger> */}
             <TabsTrigger value="tasks">Tareas</TabsTrigger>
             <TabsTrigger value="activity">Actividad</TabsTrigger>
           </TabsList>
