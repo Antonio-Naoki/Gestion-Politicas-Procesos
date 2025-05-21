@@ -33,8 +33,13 @@ export const useNotifications = () => {
   };
 
   const createNotification = async (notification: Omit<Notification, "id" | "createdAt" | "read">) => {
-    await api.post("/api/notifications", notification);
-    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    try {
+      await api.post("/api/notifications", notification);
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    } catch (error) {
+      console.warn("No se pudo crear la notificación:", error);
+      // No lanzar el error para no detener el flujo
+    }
   };
 
   return {
