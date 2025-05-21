@@ -213,15 +213,15 @@ export default function DashboardPage() {
       {/* Main content sections */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Pending Approvals Section - Only for admin and manager */}
-        {(user?.role === "admin" || user?.role === "manager") && (
+        {/* {(user?.role === "admin" || user?.role === "manager") && (
           <PendingApprovals 
             onViewDocument={handleViewDocument} 
             recentApprovals={approvals.recentApprovals}
           />
-        )}
+        )} */}
         
         {/* Tasks Section */}
-        <TasksList />
+        {/* <TasksList /> */}
       </div>
       
       {/* Recent Documents Section */}
