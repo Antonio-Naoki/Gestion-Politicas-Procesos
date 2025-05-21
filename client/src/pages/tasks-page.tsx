@@ -6,6 +6,7 @@ import { Task, User, Document } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useNotificationTrigger } from "@/hooks/use-notification-trigger";
 import { 
   Card,
   CardContent,
@@ -69,6 +70,7 @@ export default function TasksPage() {
 
   const { user } = useAuth();
   const { toast } = useToast();
+  const { triggerNotification } = useNotificationTrigger();
 
   // Get pending approvals count for the badge in the sidebar
   const { data: approvals } = useQuery({
@@ -90,7 +92,7 @@ export default function TasksPage() {
   const createTaskMutation = useMutation({
     mutationFn: async (newTask: any) => {
       const response = await apiRequest("POST", "/api/tasks", newTask);
-      return response.json();
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -165,7 +167,25 @@ export default function TasksPage() {
     };
 
     try {
-      await createTaskMutation.mutateAsync(newTask);
+      const response = await createTaskMutation.mutateAsync(newTask);
+      
+      // Trigger notification for the assigned user
+      triggerNotification(
+        "task",
+        "Nueva tarea asignada",
+        `Se te ha asignado la tarea "${taskTitle}"`,
+        `/tasks`
+      );
+
+      // If the task was created by someone else, also notify the creator
+      if (user?.id !== taskAssignee) {
+        triggerNotification(
+          "task",
+          "Tarea creada",
+          `Has creado la tarea "${taskTitle}" y asignado a ${users?.find(u => u.id === taskAssignee)?.name || "un usuario"}`,
+          `/tasks`
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
